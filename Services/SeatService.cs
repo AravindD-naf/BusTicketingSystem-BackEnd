@@ -40,6 +40,7 @@ namespace BusTicketingSystem.Services
                 ScheduleId = scheduleId,
                 BusId = schedule.BusId,
                 BusNumber = schedule.Bus?.BusNumber ?? string.Empty,
+                BaseFare = schedule.Route?.BaseFare ?? 0,
                 TotalSeats = schedule.TotalSeats,
                 AvailableSeats = schedule.AvailableSeats,
                 LockedSeats = seats.Count(s => s.SeatStatus == "Locked"),

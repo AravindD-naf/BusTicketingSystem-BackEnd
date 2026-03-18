@@ -13,8 +13,8 @@ public class TimeSpanConverter : JsonConverter<TimeSpan>
         if (string.IsNullOrWhiteSpace(value))
             throw new JsonException("Invalid TimeSpan value.");
 
-        // Supports both "HH:mm:ss" (same day) and "d.HH:mm:ss" or "HH:mm:ss" with hours > 23
-        // Try standard TimeSpan.Parse first — handles "36:15:00" natively
+        // Handle "H:mm:ss", "HH:mm:ss", "HHH:mm:ss" — any number of hours
+        // TimeSpan.Parse natively supports hours > 23 (e.g. "36:15:00" = 1 day 12h 15m)
         if (TimeSpan.TryParse(value, out var result))
             return result;
 
@@ -26,7 +26,11 @@ public class TimeSpanConverter : JsonConverter<TimeSpan>
         TimeSpan value,
         JsonSerializerOptions options)
     {
-        // Write as "HH:mm:ss" for same-day, or "d.HH:mm:ss" for multi-day
-        writer.WriteStringValue(value.ToString(@"hh\:mm\:ss"));
+        // Always write as total hours:mm:ss to preserve overnight values
+        var totalHours = (int)value.TotalHours;
+        var minutes = value.Minutes;
+        var seconds = value.Seconds;
+        writer.WriteStringValue(
+            $"{totalHours:D2}:{minutes:D2}:{seconds:D2}");
     }
 }

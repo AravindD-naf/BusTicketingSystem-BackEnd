@@ -15,6 +15,8 @@ namespace BusTicketingSystem.DTOs.Responses
         public int ScheduleId { get; set; }
         public int BusId { get; set; }
         public string BusNumber { get; set; } = string.Empty;
+        public decimal BaseFare { get; set; }
+
         public int TotalSeats { get; set; }
         public int AvailableSeats { get; set; }
         public int LockedSeats { get; set; }

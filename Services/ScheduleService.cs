@@ -44,12 +44,11 @@ namespace BusTicketingSystem.Services
             int userId,
             string ipAddress)
         {
-            // Allow overnight journeys: arrival can be next day (TimeSpan > 24h)
-            // ArrivalTime as TimeSpan can exceed 24:00:00 to represent next-day arrival
-            if (dto.ArrivalTime <= TimeSpan.Zero)
-                throw ValidationException.ForField("arrivalTime", "Arrival time is invalid");
-            if (dto.ArrivalTime == dto.DepartureTime)
-                throw ValidationException.ForField("arrivalTime", "Arrival time cannot be the same as departure time");
+            var depTime = dto.DepartureTimeSpan;
+            var arrTime = dto.ArrivalTimeSpan;
+
+            if (arrTime == depTime)
+                throw ValidationException.ForField("arrivalTime", "Arrival time cannot equal departure time");
 
             if (dto.TravelDate.Date < DateTime.UtcNow.Date)
                 throw ValidationException.ForField("travelDate", "Travel date cannot be in the past");
@@ -63,24 +62,24 @@ namespace BusTicketingSystem.Services
                 throw new ResourceNotFoundException("Bus", dto.BusId.ToString());
 
             var exists = await _scheduleRepository
-                .ExistsAsync(dto.BusId, dto.TravelDate, dto.DepartureTime);
+                .ExistsAsync(dto.BusId, dto.TravelDate, depTime);
 
             if (exists)
                 throw new ConflictException("A schedule already exists for this bus, date, and time");
 
-            // Wrap arrival time to 0–23h range for DB storage; track overnight flag separately
-            var arrivalWrapped = dto.ArrivalTime.TotalMinutes >= 1440
-                ? TimeSpan.FromMinutes(dto.ArrivalTime.TotalMinutes % 1440)
-                : dto.ArrivalTime;
-            bool isOvernight = dto.ArrivalTime.TotalMinutes >= 1440;
+            // Wrap arrival to 0-23h range for DB storage (time column max 23:59:59)
+            var arrWrapped = arrTime.TotalMinutes >= 1440
+                ? TimeSpan.FromMinutes(arrTime.TotalMinutes % 1440)
+                : arrTime;
+            bool isOvernight = arrTime.TotalMinutes >= 1440;
 
             var schedule = new Schedule
             {
                 RouteId = dto.RouteId,
                 BusId = dto.BusId,
                 TravelDate = dto.TravelDate.Date,
-                DepartureTime = dto.DepartureTime,
-                ArrivalTime = arrivalWrapped,
+                DepartureTime = depTime,
+                ArrivalTime = arrWrapped,
                 IsOvernightArrival = isOvernight,
                 TotalSeats = bus.TotalSeats,
                 AvailableSeats = bus.TotalSeats,
@@ -192,16 +191,13 @@ namespace BusTicketingSystem.Services
             if (dto.TravelDate.Date < today)
                 throw new Exception("Travel date cannot be in the past.");
 
-            if (dto.ArrivalTime <= TimeSpan.Zero)
-                throw new Exception("Arrival time is invalid.");
-            if (dto.ArrivalTime == dto.DepartureTime)
-                throw new Exception("Arrival time cannot be the same as departure time.");
+            var depTime = dto.DepartureTimeSpan;
+            var arrTime = dto.ArrivalTimeSpan;
 
-            DateTime departureDateTime =
-                dto.TravelDate.Date.Add(dto.DepartureTime);
+            if (arrTime == depTime)
+                throw new Exception("Arrival time cannot equal departure time.");
 
-            DateTime arrivalDateTime =
-                dto.TravelDate.Date.Add(dto.ArrivalTime);
+            DateTime departureDateTime = dto.TravelDate.Date.Add(depTime);
 
             if (dto.TravelDate.Date == today &&
                 departureDateTime <= DateTime.UtcNow)
@@ -233,11 +229,11 @@ namespace BusTicketingSystem.Services
             schedule.BusId = dto.BusId;
             schedule.RouteId = dto.RouteId;
             schedule.TravelDate = dto.TravelDate.Date;
-            schedule.DepartureTime = dto.DepartureTime;
-            schedule.ArrivalTime = dto.ArrivalTime.TotalMinutes >= 1440
-                ? TimeSpan.FromMinutes(dto.ArrivalTime.TotalMinutes % 1440)
-                : dto.ArrivalTime;
-            schedule.IsOvernightArrival = dto.ArrivalTime.TotalMinutes >= 1440;
+            schedule.DepartureTime = depTime;
+            schedule.ArrivalTime = arrTime.TotalMinutes >= 1440
+                ? TimeSpan.FromMinutes(arrTime.TotalMinutes % 1440)
+                : arrTime;
+            schedule.IsOvernightArrival = arrTime.TotalMinutes >= 1440;
             schedule.UpdatedAt = DateTime.UtcNow;
 
             await _scheduleRepository.UpdateAsync(schedule);
@@ -319,21 +315,6 @@ namespace BusTicketingSystem.Services
                 .SuccessResponse(schedules.Select(MapToDto).ToList());
         }
 
-        //private ScheduleResponseDto MapToDto(Schedule s)
-        //{
-        //    return new ScheduleResponseDto
-        //    {
-        //        ScheduleId = s.ScheduleId,
-        //        RouteId = s.RouteId,
-        //        BusId = s.BusId,
-        //        TravelDate = s.TravelDate,
-        //        DepartureTime = s.DepartureTime,
-        //        ArrivalTime = s.ArrivalTime,
-        //        TotalSeats = s.TotalSeats,
-        //        AvailableSeats = s.AvailableSeats,
-        //        IsActive = s.IsActive
-        //    };
-        //}
         private ScheduleResponseDto MapToDto(Schedule s)
         {
             return new ScheduleResponseDto
@@ -342,15 +323,18 @@ namespace BusTicketingSystem.Services
                 RouteId = s.RouteId,
                 Source = s.Route?.Source,
                 Destination = s.Route?.Destination,
+                BaseFare = s.Route?.BaseFare ?? 0,
                 BusId = s.BusId,
                 BusNumber = s.Bus?.BusNumber,
                 OperatorName = s.Bus?.OperatorName,
+                BusType = s.Bus?.BusType,
+                Rating = s.Bus?.RatingAverage ?? 0,
                 TravelDate = s.TravelDate,
                 DepartureTime = s.DepartureTime,
                 ArrivalTime = s.ArrivalTime,
+                IsOvernightArrival = s.IsOvernightArrival,
                 TotalSeats = s.TotalSeats,
                 AvailableSeats = s.AvailableSeats,
-                IsOvernightArrival = s.IsOvernightArrival,
                 IsActive = s.IsActive
             };
         }

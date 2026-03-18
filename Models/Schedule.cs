@@ -29,6 +29,7 @@ namespace BusTicketingSystem.Models
         [Required]
         public TimeSpan ArrivalTime { get; set; }
 
+        // Marks overnight journeys where arrival is next day
         public bool IsOvernightArrival { get; set; } = false;
 
         [Required]
@@ -42,6 +43,5 @@ namespace BusTicketingSystem.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
-
     }
 }
