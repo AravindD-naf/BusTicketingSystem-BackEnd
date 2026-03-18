@@ -5,7 +5,6 @@ using BusTicketingSystem.Exceptions;
 using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Interfaces.Services;
 using BusTicketingSystem.Models;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -45,8 +44,12 @@ namespace BusTicketingSystem.Services
             int userId,
             string ipAddress)
         {
-            if (dto.ArrivalTime <= dto.DepartureTime)
-                throw ValidationException.ForField("arrivalTime", "Arrival time must be after departure time");
+            // Allow overnight journeys: arrival can be next day (TimeSpan > 24h)
+            // ArrivalTime as TimeSpan can exceed 24:00:00 to represent next-day arrival
+            if (dto.ArrivalTime <= TimeSpan.Zero)
+                throw ValidationException.ForField("arrivalTime", "Arrival time is invalid");
+            if (dto.ArrivalTime == dto.DepartureTime)
+                throw ValidationException.ForField("arrivalTime", "Arrival time cannot be the same as departure time");
 
             if (dto.TravelDate.Date < DateTime.UtcNow.Date)
                 throw ValidationException.ForField("travelDate", "Travel date cannot be in the past");
@@ -65,13 +68,20 @@ namespace BusTicketingSystem.Services
             if (exists)
                 throw new ConflictException("A schedule already exists for this bus, date, and time");
 
+            // Wrap arrival time to 0–23h range for DB storage; track overnight flag separately
+            var arrivalWrapped = dto.ArrivalTime.TotalMinutes >= 1440
+                ? TimeSpan.FromMinutes(dto.ArrivalTime.TotalMinutes % 1440)
+                : dto.ArrivalTime;
+            bool isOvernight = dto.ArrivalTime.TotalMinutes >= 1440;
+
             var schedule = new Schedule
             {
                 RouteId = dto.RouteId,
                 BusId = dto.BusId,
                 TravelDate = dto.TravelDate.Date,
                 DepartureTime = dto.DepartureTime,
-                ArrivalTime = dto.ArrivalTime,
+                ArrivalTime = arrivalWrapped,
+                IsOvernightArrival = isOvernight,
                 TotalSeats = bus.TotalSeats,
                 AvailableSeats = bus.TotalSeats,
                 CreatedAt = DateTime.UtcNow
@@ -80,12 +90,34 @@ namespace BusTicketingSystem.Services
             await _scheduleRepository.AddAsync(schedule);
             await _scheduleRepository.SaveChangesAsync();
 
-            // Call stored procedure to generate seats for the schedule
+            // Generate seats directly in C# — no stored procedure dependency
             try
             {
-                var scheduleIdParam = new SqlParameter("@ScheduleId", schedule.ScheduleId);
-                await _dbContext.Database.ExecuteSqlInterpolatedAsync(
-                    $"EXEC sp_GenerateSeatsForSchedule {scheduleIdParam}");
+                var seats = new List<Seat>();
+                int col = 1;
+                char row = 'A';
+
+                for (int i = 1; i <= schedule.TotalSeats; i++)
+                {
+                    seats.Add(new Seat
+                    {
+                        ScheduleId = schedule.ScheduleId,
+                        SeatNumber = $"{row}{col}",
+                        SeatStatus = "Available",
+                        CreatedAt = DateTime.UtcNow,
+                        IsDeleted = false
+                    });
+
+                    col++;
+                    if (col > 4)
+                    {
+                        col = 1;
+                        row = (char)(row + 1);
+                    }
+                }
+
+                await _dbContext.Seats.AddRangeAsync(seats);
+                await _dbContext.SaveChangesAsync();
             }
             catch (Exception ex)
             {
@@ -160,8 +192,10 @@ namespace BusTicketingSystem.Services
             if (dto.TravelDate.Date < today)
                 throw new Exception("Travel date cannot be in the past.");
 
-            if (dto.ArrivalTime <= dto.DepartureTime)
-                throw new Exception("Arrival time must be after departure time.");
+            if (dto.ArrivalTime <= TimeSpan.Zero)
+                throw new Exception("Arrival time is invalid.");
+            if (dto.ArrivalTime == dto.DepartureTime)
+                throw new Exception("Arrival time cannot be the same as departure time.");
 
             DateTime departureDateTime =
                 dto.TravelDate.Date.Add(dto.DepartureTime);
@@ -200,7 +234,10 @@ namespace BusTicketingSystem.Services
             schedule.RouteId = dto.RouteId;
             schedule.TravelDate = dto.TravelDate.Date;
             schedule.DepartureTime = dto.DepartureTime;
-            schedule.ArrivalTime = dto.ArrivalTime;
+            schedule.ArrivalTime = dto.ArrivalTime.TotalMinutes >= 1440
+                ? TimeSpan.FromMinutes(dto.ArrivalTime.TotalMinutes % 1440)
+                : dto.ArrivalTime;
+            schedule.IsOvernightArrival = dto.ArrivalTime.TotalMinutes >= 1440;
             schedule.UpdatedAt = DateTime.UtcNow;
 
             await _scheduleRepository.UpdateAsync(schedule);
@@ -313,6 +350,7 @@ namespace BusTicketingSystem.Services
                 ArrivalTime = s.ArrivalTime,
                 TotalSeats = s.TotalSeats,
                 AvailableSeats = s.AvailableSeats,
+                IsOvernightArrival = s.IsOvernightArrival,
                 IsActive = s.IsActive
             };
         }

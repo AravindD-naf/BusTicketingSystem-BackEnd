@@ -29,6 +29,8 @@ namespace BusTicketingSystem.Models
         [Required]
         public TimeSpan ArrivalTime { get; set; }
 
+        public bool IsOvernightArrival { get; set; } = false;
+
         [Required]
         public int TotalSeats { get; set; }
 

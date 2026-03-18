@@ -4,15 +4,21 @@ using System.Text.Json.Serialization;
 
 public class TimeSpanConverter : JsonConverter<TimeSpan>
 {
-    private const string Format = @"hh\:mm\:ss";
-
     public override TimeSpan Read(
         ref Utf8JsonReader reader,
         Type typeToConvert,
         JsonSerializerOptions options)
     {
         var value = reader.GetString();
-        return TimeSpan.ParseExact(value, Format, null);
+        if (string.IsNullOrWhiteSpace(value))
+            throw new JsonException("Invalid TimeSpan value.");
+
+        // Supports both "HH:mm:ss" (same day) and "d.HH:mm:ss" or "HH:mm:ss" with hours > 23
+        // Try standard TimeSpan.Parse first — handles "36:15:00" natively
+        if (TimeSpan.TryParse(value, out var result))
+            return result;
+
+        throw new JsonException($"Cannot convert \"{value}\" to TimeSpan.");
     }
 
     public override void Write(
@@ -20,6 +26,7 @@ public class TimeSpanConverter : JsonConverter<TimeSpan>
         TimeSpan value,
         JsonSerializerOptions options)
     {
-        writer.WriteStringValue(value.ToString(Format));
+        // Write as "HH:mm:ss" for same-day, or "d.HH:mm:ss" for multi-day
+        writer.WriteStringValue(value.ToString(@"hh\:mm\:ss"));
     }
 }

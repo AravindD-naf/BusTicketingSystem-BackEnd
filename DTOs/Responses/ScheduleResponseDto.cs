@@ -27,5 +27,7 @@
         public int TotalSeats { get; set; }
         public int AvailableSeats { get; set; }
         public bool IsActive { get; set; }
+        public bool IsOvernightArrival { get; set; }
+
     }
 }
