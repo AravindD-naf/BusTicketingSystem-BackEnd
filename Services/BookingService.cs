@@ -81,7 +81,7 @@ namespace BusTicketingSystem.Services
                             SeatOperationException.SeatErrorType.SeatNotAvailable);
                 }
 
-                decimal seatPrice = 500; 
+                decimal seatPrice = schedule.Route?.BaseFare ?? 500; 
                 decimal totalAmount = dto.SeatNumbers.Count * seatPrice;
 
                 var booking = new Booking
