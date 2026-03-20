@@ -49,6 +49,21 @@ namespace BusTicketingSystem.Controllers
         }
 
         [AllowAnonymous]
+        [HttpGet("by-city/{cityName}")]
+        public async Task<IActionResult> GetByCity(string cityName)
+        {
+            try
+            {
+                var result = await _sourceService.GetByCityAsync(cityName);
+                return Ok(ApiResponse<List<SourceResponseDto>>.SuccessResponse("Sources retrieved successfully", result));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
+            }
+        }
+
+        [AllowAnonymous]
         [HttpPost("{id}")]
         public async Task<IActionResult> GetSourceById(int id)
         {

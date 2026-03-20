@@ -8,6 +8,7 @@ namespace BusTicketingSystem.Repositories
     {
         Task<Source> GetByIdAsync(int id);
         Task<List<Source>> GetAllAsync(int pageNumber, int pageSize);
+        Task<List<Source>> GetByCityAsync(string cityName);
         Task CreateAsync(Source source);
         Task<bool> ExistsByNameAsync(string sourcename);
         Task UpdateAsync(Source source);
@@ -37,6 +38,16 @@ namespace BusTicketingSystem.Repositories
                 .OrderBy(s => s.SourceName)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
+                .ToListAsync();
+        }
+
+        public async Task<List<Source>> GetByCityAsync(string cityName)
+        {
+            var city = cityName.Trim().ToLower();
+            return await _dbContext.Sources
+                .Where(s => !s.IsDeleted && s.IsActive &&
+                            s.SourceName.ToLower().StartsWith(city))
+                .OrderBy(s => s.SourceName)
                 .ToListAsync();
         }
 

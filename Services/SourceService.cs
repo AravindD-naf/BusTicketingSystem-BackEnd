@@ -47,6 +47,14 @@ namespace BusTicketingSystem.Services
             return sources.Select(MapToResponse).ToList();
         }
 
+        public async Task<List<SourceResponseDto>> GetByCityAsync(string cityName)
+        {
+            if (string.IsNullOrWhiteSpace(cityName))
+                return new List<SourceResponseDto>();
+            var sources = await _sourceRepository.GetByCityAsync(cityName);
+            return sources.Select(MapToResponse).ToList();
+        }
+
         public async Task<SourceResponseDto> GetSourceByIdAsync(int id)
         {
             var source = await _sourceRepository.GetByIdAsync(id);
