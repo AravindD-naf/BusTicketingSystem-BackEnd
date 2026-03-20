@@ -3,6 +3,7 @@ using BusTicketingSystem.Exceptions;
 using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Interfaces.Services;
 using BusTicketingSystem.Models;
+using BusTicketingSystem.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Services
@@ -13,18 +14,21 @@ namespace BusTicketingSystem.Services
         private readonly ISeatLockRepository _seatLockRepository;
         private readonly IScheduleRepository _scheduleRepository;
         private readonly IAuditRepository _auditRepository;
+        private readonly IBookingRepository _bookingRepository;
         private const int LOCK_EXPIRY_MINUTES = 5;
 
         public SeatService(
             ISeatRepository seatRepository,
             ISeatLockRepository seatLockRepository,
             IScheduleRepository scheduleRepository,
-            IAuditRepository auditRepository)
+            IAuditRepository auditRepository,
+            IBookingRepository bookingRepository)
         {
             _seatRepository = seatRepository;
             _seatLockRepository = seatLockRepository;
             _scheduleRepository = scheduleRepository;
             _auditRepository = auditRepository;
+            _bookingRepository = bookingRepository;
         }
 
         public async Task<ApiResponse<SeatLayoutResponseDto>> GetSeatLayoutAsync(int scheduleId)
@@ -32,6 +36,12 @@ namespace BusTicketingSystem.Services
             var schedule = await _scheduleRepository.GetByIdAsync(scheduleId);
             if (schedule == null || schedule.IsDeleted || !schedule.IsActive)
                 throw new ResourceNotFoundException("Schedule", scheduleId.ToString());
+
+            // ADD THESE TWO LINES — clean up expired locks on every layout fetch
+            await _seatRepository.CleanupExpiredLocksAsync();
+            await _seatLockRepository.CleanupExpiredLocksAsync();
+            // ?? Inline cleanup of expired pending bookings ??
+            await CleanupExpiredPendingBookingsAsync();
 
             var seats = await _seatRepository.GetSeatsByScheduleIdAsync(scheduleId);
 
@@ -58,6 +68,54 @@ namespace BusTicketingSystem.Services
 
             return ApiResponse<SeatLayoutResponseDto>.SuccessResponse(seatLayout);
         }
+
+
+        private async Task CleanupExpiredPendingBookingsAsync()
+        {
+            var cutoff = DateTime.UtcNow.AddMinutes(5);
+
+            var expiredBookings = await _bookingRepository
+                .GetExpiredPendingBookingsAsync();
+
+            if (expiredBookings.Count == 0) return;
+
+            var now = DateTime.UtcNow;
+
+            foreach (var booking in expiredBookings)
+            {
+                booking.BookingStatus = BookingStatus.Cancelled;
+                booking.LastStatusChangeAt = now;
+                booking.CancellationReason =
+                    "Booking expired — payment not completed within allowed time.";
+
+                await _bookingRepository.UpdateAsync(booking);
+
+                // Release any seats still linked to this booking
+                var seats = await _seatRepository
+                    .GetSeatsByScheduleIdAsync(booking.ScheduleId);
+
+                var linkedSeats = seats
+                    .Where(s => s.BookingId == booking.BookingId &&
+                           (s.SeatStatus == "Locked" || s.SeatStatus == "Booked"))
+                    .ToList();
+
+                if (linkedSeats.Count > 0)
+                {
+                    foreach (var seat in linkedSeats)
+                    {
+                        seat.SeatStatus = "Available";
+                        seat.LockedByUserId = null;
+                        seat.LockedAt = null;
+                        seat.BookingId = null;
+                        seat.UpdatedAt = now;
+                    }
+                    await _seatRepository.UpdateManyAsync(linkedSeats);
+                }
+            }
+
+            await _bookingRepository.SaveChangesAsync();
+        }
+
 
         public async Task<ApiResponse<LockSeatsResponseDto>> LockSeatsAsync(
             int scheduleId,
@@ -86,6 +144,7 @@ namespace BusTicketingSystem.Services
             var expiresAt = now.AddMinutes(LOCK_EXPIRY_MINUTES);
 
             await _seatLockRepository.CleanupExpiredLocksAsync();
+            await _seatRepository.CleanupExpiredLocksAsync();
 
             try
             {

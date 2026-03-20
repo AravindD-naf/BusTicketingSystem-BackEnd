@@ -14,6 +14,8 @@ namespace BusTicketingSystem.Interfaces.Services
         Task<ApiResponse<List<BookingResponseDto>>>
             GetMyBookingsAsync(int userId);
 
+        Task<int> CleanupExpiredBookingsAsync();
+
         Task<ApiResponse<List<BookingResponseDto>>>
             GetAllBookingsAsync();
 

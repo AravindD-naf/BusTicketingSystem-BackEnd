@@ -1,6 +1,7 @@
 ﻿using BusTicketingSystem.Data;
 using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Models;
+using BusTicketingSystem.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Repositories
@@ -23,6 +24,18 @@ namespace BusTicketingSystem.Repositories
         {
             _context.Bookings.Update(booking);
             await Task.CompletedTask;
+        }
+
+        public async Task<List<Booking>> GetExpiredPendingBookingsAsync()
+        {
+            var cutoff = DateTime.UtcNow.AddMinutes(5);
+
+            return await _context.Bookings
+                .Where(b =>
+                    b.BookingStatus == BookingStatus.Pending &&
+                    b.BookingDate <= cutoff &&
+                    !b.IsDeleted)
+                .ToListAsync();
         }
 
         public async Task<Booking?> GetByIdAsync(int bookingId)

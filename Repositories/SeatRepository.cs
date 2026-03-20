@@ -95,6 +95,7 @@ namespace BusTicketingSystem.Repositories
                 seat.SeatStatus = "Available";
                 seat.LockedByUserId = null;
                 seat.LockedAt = null;
+                seat.BookingId = null;
                 seat.UpdatedAt = now;
             }
 

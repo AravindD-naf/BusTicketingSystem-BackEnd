@@ -18,6 +18,7 @@ namespace BusTicketingSystem.Services
         private readonly IScheduleRepository _scheduleRepository;
         private readonly ICancellationPolicyRepository _policyRepository;
         private readonly IAuditRepository _auditRepository;
+        private readonly ISeatRepository _seatRepository;
 
         public PaymentService(
             IPaymentRepository paymentRepository,
@@ -25,7 +26,8 @@ namespace BusTicketingSystem.Services
             IBookingRepository bookingRepository,
             IScheduleRepository scheduleRepository,
             ICancellationPolicyRepository policyRepository,
-            IAuditRepository auditRepository)
+            IAuditRepository auditRepository,
+            ISeatRepository seatRepository)
         {
             _paymentRepository = paymentRepository;
             _refundRepository = refundRepository;
@@ -33,6 +35,7 @@ namespace BusTicketingSystem.Services
             _scheduleRepository = scheduleRepository;
             _policyRepository = policyRepository;
             _auditRepository = auditRepository;
+            _seatRepository = seatRepository;
         }
 
         public async Task<ApiResponse<PaymentResponseDto>> InitiatePaymentAsync(
@@ -121,7 +124,6 @@ namespace BusTicketingSystem.Services
                     $"Cannot confirm payment with status: {payment.Status}",
                     PaymentOperationException.PaymentErrorType.ProcessingError);
 
-         
             payment.TransactionId = dto.TransactionId;
             payment.ProcessedAt = DateTime.UtcNow;
 
@@ -130,6 +132,32 @@ namespace BusTicketingSystem.Services
                 payment.Status = PaymentStatus.Success;
                 booking.BookingStatus = BookingStatus.Confirmed;
                 booking.LastStatusChangeAt = DateTime.UtcNow;
+
+                // ?? KEY CHANGE ?? Confirm seats: Locked ? Booked (only now, after payment)
+                var lockedSeats = await _seatRepository.GetLockedSeatsByUserAsync(
+                    booking.ScheduleId, booking.UserId);
+
+                if (lockedSeats.Count > 0)
+                {
+                    var now = DateTime.UtcNow;
+                    foreach (var seat in lockedSeats)
+                    {
+                        seat.SeatStatus = "Booked";
+                        seat.LockedByUserId = null;
+                        seat.LockedAt = null;
+                        seat.UpdatedAt = now;
+                    }
+                    await _seatRepository.UpdateManyAsync(lockedSeats);
+
+                    // Now decrement AvailableSeats since payment is confirmed
+                    var schedule = await _scheduleRepository.GetByIdAsync(booking.ScheduleId);
+                    if (schedule != null)
+                    {
+                        schedule.AvailableSeats -= lockedSeats.Count;
+                        await _scheduleRepository.UpdateAsync(schedule);
+                    }
+                }
+                // ????????????????
             }
             else
             {
@@ -137,6 +165,25 @@ namespace BusTicketingSystem.Services
                 payment.FailureReason = dto.FailureReason;
                 booking.BookingStatus = BookingStatus.PaymentFailed;
                 booking.LastStatusChangeAt = DateTime.UtcNow;
+
+                // ?? KEY CHANGE ?? Payment failed: release locked seats back to Available
+                var lockedSeats = await _seatRepository.GetLockedSeatsByUserAsync(
+                    booking.ScheduleId, booking.UserId);
+
+                if (lockedSeats.Count > 0)
+                {
+                    var now = DateTime.UtcNow;
+                    foreach (var seat in lockedSeats)
+                    {
+                        seat.SeatStatus = "Available";
+                        seat.LockedByUserId = null;
+                        seat.LockedAt = null;
+                        seat.BookingId = null;
+                        seat.UpdatedAt = now;
+                    }
+                    await _seatRepository.UpdateManyAsync(lockedSeats);
+                }
+                // ????????????????
             }
 
             await _paymentRepository.UpdateAsync(payment);

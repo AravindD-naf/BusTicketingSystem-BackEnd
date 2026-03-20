@@ -13,7 +13,6 @@ namespace BusTicketingSystem.Services
         private readonly IBookingRepository _bookingRepository;
         private readonly IScheduleRepository _scheduleRepository;
         private readonly ISeatRepository _seatRepository;
-        private readonly ISeatService _seatService;
         private readonly IAuditRepository _auditRepository;
 
         public BookingService(
@@ -26,11 +25,10 @@ namespace BusTicketingSystem.Services
             _bookingRepository = bookingRepository;
             _scheduleRepository = scheduleRepository;
             _seatRepository = seatRepository;
-            _seatService = seatService;
             _auditRepository = auditRepository;
         }
 
-    
+
         public async Task<ApiResponse<BookingResponseDto>> CreateBookingAsync(
             CreateBookingRequestDto dto,
             int userId,
@@ -81,7 +79,7 @@ namespace BusTicketingSystem.Services
                             SeatOperationException.SeatErrorType.SeatNotAvailable);
                 }
 
-                decimal seatPrice = schedule.Route?.BaseFare ?? 500; 
+                decimal seatPrice = schedule.Route?.BaseFare ?? 500;
                 decimal totalAmount = dto.SeatNumbers.Count * seatPrice;
 
                 var booking = new Booking
@@ -96,16 +94,21 @@ namespace BusTicketingSystem.Services
 
                 await _bookingRepository.AddAsync(booking);
                 await _bookingRepository.SaveChangesAsync();
-                
-                await _seatService.ConfirmBookingSeatsAsync(
-                    booking.BookingId,
-                    dto.ScheduleId,
-                    dto.SeatNumbers,
-                    userId);
 
-                schedule.AvailableSeats -= dto.SeatNumbers.Count;
-                await _scheduleRepository.UpdateAsync(schedule);
-                await _scheduleRepository.SaveChangesAsync();
+                // ── KEY CHANGE ──
+                // Link BookingId to seats but keep SeatStatus as "Locked"
+                // Seats only move to "Booked" after payment is confirmed
+                foreach (var seat in seats)
+                {
+                    seat.BookingId = booking.BookingId;
+                    seat.UpdatedAt = DateTime.UtcNow;
+                }
+                await _seatRepository.UpdateManyAsync(seats);
+                await _seatRepository.SaveChangesAsync();
+                // ────────────────
+
+                // AvailableSeats count stays the same until payment is confirmed
+                // so we do NOT decrement schedule.AvailableSeats here
 
                 await _auditRepository.LogAuditAsync(
                     "CREATE",
@@ -119,15 +122,63 @@ namespace BusTicketingSystem.Services
                 return ApiResponse<BookingResponseDto>
                     .SuccessResponse(MapToDto(booking));
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
         }
 
+
+        public async Task<int> CleanupExpiredBookingsAsync()
+        {
+            var expiredBookings = await _bookingRepository.GetExpiredPendingBookingsAsync();
+
+            if (expiredBookings.Count == 0) return 0;
+
+            var now = DateTime.UtcNow;
+
+            foreach (var booking in expiredBookings)
+            {
+                // Cancel the booking
+                booking.BookingStatus = BookingStatus.Cancelled;
+                booking.LastStatusChangeAt = now;
+                booking.CancellationReason = "Booking expired — payment not completed within 5 minutes.";
+
+                await _bookingRepository.UpdateAsync(booking);
+
+                // Release any seats still linked to this booking
+                var seats = await _seatRepository.GetSeatsByScheduleIdAsync(booking.ScheduleId);
+                var linkedSeats = seats
+                    .Where(s => s.BookingId == booking.BookingId &&
+                                (s.SeatStatus == "Locked" || s.SeatStatus == "Booked"))
+                    .ToList();
+
+                if (linkedSeats.Count > 0)
+                {
+                    foreach (var seat in linkedSeats)
+                    {
+                        seat.SeatStatus = "Available";
+                        seat.LockedByUserId = null;
+                        seat.LockedAt = null;
+                        seat.BookingId = null;
+                        seat.UpdatedAt = now;
+                    }
+                    await _seatRepository.UpdateManyAsync(linkedSeats);
+                }
+            }
+
+            await _bookingRepository.SaveChangesAsync();
+
+            return expiredBookings.Count;
+        }
+
+
         public async Task<ApiResponse<List<BookingResponseDto>>>
             GetMyBookingsAsync(int userId)
         {
+            // Trigger cleanup so My Bookings page always shows updated statuses
+            await CleanupExpiredBookingsAsync();
+
             var bookings = await _bookingRepository.GetByUserIdAsync(userId);
 
             return ApiResponse<List<BookingResponseDto>>
@@ -190,7 +241,7 @@ namespace BusTicketingSystem.Services
                 .SuccessResponse(bookingDetail);
         }
 
-      
+
         public async Task<ApiResponse<bool>> CancelBookingAsync(
             int bookingId,
             int userId,
@@ -208,14 +259,12 @@ namespace BusTicketingSystem.Services
             if (booking.BookingStatus == BookingStatus.Cancelled)
                 throw new Exception("Booking already cancelled.");
 
-            var schedule = await _scheduleRepository
-                .GetByIdAsync(booking.ScheduleId);
+            var schedule = await _scheduleRepository.GetByIdAsync(booking.ScheduleId);
 
             if (schedule == null)
                 throw new Exception("Schedule not found.");
 
-            DateTime departureDateTime =
-                schedule.TravelDate.Add(schedule.DepartureTime);
+            DateTime departureDateTime = schedule.TravelDate.Add(schedule.DepartureTime);
 
             if (departureDateTime <= DateTime.UtcNow)
                 throw new Exception("Cannot cancel after departure.");
@@ -225,32 +274,47 @@ namespace BusTicketingSystem.Services
                 try
                 {
                     var seats = await _seatRepository.GetSeatsByScheduleIdAsync(booking.ScheduleId);
-                    var bookedSeats = seats.Where(s => s.BookingId == bookingId && s.SeatStatus == "Booked").ToList();
 
-                    if (bookedSeats.Count > 0)
+                    // ── KEY CHANGE ── handle both Locked (pending payment) and Booked (paid)
+                    var affectedSeats = seats
+                        .Where(s => s.BookingId == bookingId &&
+                               (s.SeatStatus == "Booked" || s.SeatStatus == "Locked"))
+                        .ToList();
+
+                    if (affectedSeats.Count > 0)
                     {
-                        var seatNumbers = bookedSeats.Select(s => s.SeatNumber).ToList();
+                        var now = DateTime.UtcNow;
+                        foreach (var seat in affectedSeats)
+                        {
+                            seat.SeatStatus = "Available";
+                            seat.LockedByUserId = null;
+                            seat.LockedAt = null;
+                            seat.BookingId = null;
+                            seat.UpdatedAt = now;
+                        }
+                        await _seatRepository.UpdateManyAsync(affectedSeats);
 
-                        // Release booked seats back to available
-                        await _seatService.ReleaseBookingSeatsAsync(booking.ScheduleId, seatNumbers);
-
-                        // Restore seats to schedule
-                        schedule.AvailableSeats += bookedSeats.Count;
+                        // Only restore AvailableSeats for confirmed (Booked) bookings
+                        var bookedCount = affectedSeats.Count(s => s.SeatStatus == "Booked");
+                        if (bookedCount > 0)
+                        {
+                            schedule.AvailableSeats += bookedCount;
+                        }
                     }
+                    // ────────────────
 
-                    // Update booking status
                     booking.BookingStatus = BookingStatus.Cancelled;
                     booking.LastStatusChangeAt = DateTime.UtcNow;
 
                     await _scheduleRepository.UpdateAsync(schedule);
                     await _bookingRepository.UpdateAsync(booking);
-                    
+
                     await _auditRepository.LogAuditAsync(
                         "CANCEL",
                         "Booking",
                         booking.BookingId.ToString(),
                         null,
-                        new { bookingId, seatsReleased = bookedSeats.Count },
+                        new { bookingId, seatsReleased = affectedSeats.Count },
                         userId,
                         ipAddress);
 
@@ -259,7 +323,7 @@ namespace BusTicketingSystem.Services
 
                     return ApiResponse<bool>.SuccessResponse(true);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     await transaction.RollbackAsync();
                     throw;
@@ -276,7 +340,8 @@ namespace BusTicketingSystem.Services
                 NumberOfSeats = b.NumberOfSeats,
                 TotalAmount = b.TotalAmount,
                 BookingStatus = b.BookingStatus.ToString(),
-                BookingDate = b.BookingDate
+                BookingDate = b.BookingDate,
+                CancellationReason = b.CancellationReason ?? string.Empty
             };
         }
     }
