@@ -35,5 +35,18 @@ namespace BusTicketingSystem.Interfaces.Repositories
             DateTime travelDate);
 
         Task<IDbContextTransaction> BeginTransactionAsync();
+
+        Task<bool> HasOverlappingScheduleAsync(
+            int busId,
+            DateTime travelDate,
+            TimeSpan departureTime,
+            TimeSpan arrivalTime,
+            bool isOvernight,
+            int? excludeScheduleId = null);
+
+        Task<(IEnumerable<Schedule>, int)> SearchAsync(
+            string? keyword,
+            int pageNumber,
+            int pageSize);
     }
 }

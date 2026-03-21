@@ -71,11 +71,12 @@ namespace BusTicketingSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] ScheduleRequestDto dto)
         {
-            var response = await _scheduleService.CreateAsync(
-                dto,
-                1,
-                HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown");
+            // REPLACE hardcoded 1 with actual user ID from JWT
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            int userId = userIdClaim != null ? int.Parse(userIdClaim.Value) : 0;
+            string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
 
+            var response = await _scheduleService.CreateAsync(dto, userId, ip);
             return Ok(response);
         }
 
@@ -114,16 +115,14 @@ namespace BusTicketingSystem.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(
-            int id,
-            [FromBody] ScheduleRequestDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] ScheduleRequestDto dto)
         {
-            var response = await _scheduleService.UpdateAsync(
-                id,
-                dto,
-                1,
-                HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown");
+            // REPLACE hardcoded 1 with actual user ID from JWT
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            int userId = userIdClaim != null ? int.Parse(userIdClaim.Value) : 0;
+            string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
 
+            var response = await _scheduleService.UpdateAsync(id, dto, userId, ip);
             return Ok(response);
         }
 

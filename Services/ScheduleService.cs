@@ -61,11 +61,26 @@ namespace BusTicketingSystem.Services
             if (bus == null || bus.IsDeleted || !bus.IsActive)
                 throw new ResourceNotFoundException("Bus", dto.BusId.ToString());
 
-            var exists = await _scheduleRepository
+            // Check 1: exact same time
+            var exactExists = await _scheduleRepository
                 .ExistsAsync(dto.BusId, dto.TravelDate, depTime);
+            if (exactExists)
+                throw new ConflictException(
+                    $"Bus is already scheduled on {dto.TravelDate:dd MMM yyyy} at {depTime:hh\\:mm}. " +
+                    "Please choose a different departure time.");
 
-            if (exists)
-                throw new ConflictException("A schedule already exists for this bus, date, and time");
+            // Check 2: journey overlap (bus can't be in two places)
+            var arrWrappedCheck = arrTime.TotalMinutes >= 1440
+                ? TimeSpan.FromMinutes(arrTime.TotalMinutes % 1440)
+                : arrTime;
+            bool isOvernightCheck = arrTime.TotalMinutes >= 1440;
+
+            var hasOverlap = await _scheduleRepository.HasOverlappingScheduleAsync(
+                dto.BusId, dto.TravelDate, depTime, arrWrappedCheck, isOvernightCheck);
+            if (hasOverlap)
+                throw new ConflictException(
+                    $"Bus is already on a journey that overlaps with the requested time on {dto.TravelDate:dd MMM yyyy}. " +
+                    "Please choose a time after the existing journey completes.");
 
             // Wrap arrival to 0-23h range for DB storage (time column max 23:59:59)
             var arrWrapped = arrTime.TotalMinutes >= 1440
@@ -175,53 +190,92 @@ namespace BusTicketingSystem.Services
                 .SuccessResponse(MapToDto(schedule));
         }
 
+
         public async Task<ApiResponse<ScheduleResponseDto>> UpdateAsync(
-    int id,
-    ScheduleRequestDto dto,
-    int userId,
-    string ipAddress)
+            int id,
+            ScheduleRequestDto dto,
+            int userId,
+            string ipAddress)
         {
             var schedule = await _scheduleRepository.GetByIdAsync(id);
-
             if (schedule == null || schedule.IsDeleted)
-                throw new Exception("Schedule not found.");
+                throw new ResourceNotFoundException("Schedule", id.ToString());
 
-            DateTime today = DateTime.UtcNow.Date;
-
-            if (dto.TravelDate.Date < today)
-                throw new Exception("Travel date cannot be in the past.");
+            if (dto.TravelDate.Date < DateTime.UtcNow.Date)
+                throw new ValidationException("Travel date cannot be in the past.");
 
             var depTime = dto.DepartureTimeSpan;
             var arrTime = dto.ArrivalTimeSpan;
 
-            if (arrTime == depTime)
-                throw new Exception("Arrival time cannot equal departure time.");
+            if (arrTime.TotalMinutes == 0 && depTime.TotalMinutes == 0)
+                throw new ValidationException("Invalid departure or arrival time.");
 
-            DateTime departureDateTime = dto.TravelDate.Date.Add(depTime);
+            if (arrTime == depTime && arrTime.TotalMinutes < 1440)
+                throw new ValidationException("Arrival time cannot equal departure time.");
 
-            if (dto.TravelDate.Date == today &&
-                departureDateTime <= DateTime.UtcNow)
-                throw new Exception("Departure time must be in the future.");
+            if (dto.TravelDate.Date == DateTime.UtcNow.Date &&
+                dto.TravelDate.Date.Add(depTime) <= DateTime.UtcNow)
+                throw new ValidationException("Departure time must be in the future.");
 
             var bus = await _busRepository.GetByIdAsync(dto.BusId);
             if (bus == null || bus.IsDeleted || !bus.IsActive)
-                throw new Exception("Invalid Bus.");
+                throw new ResourceNotFoundException("Bus", dto.BusId.ToString());
 
             var route = await _routeRepository.GetByIdAsync(dto.RouteId);
             if (route == null || route.IsDeleted || !route.IsActive)
-                throw new Exception("Invalid Route.");
+                throw new ResourceNotFoundException("Route", dto.RouteId.ToString());
 
-            var oldValues = System.Text.Json.JsonSerializer.Serialize(schedule);
+            // Wrap arrival
+            var arrWrapped = arrTime.TotalMinutes >= 1440
+                ? TimeSpan.FromMinutes(arrTime.TotalMinutes % 1440)
+                : arrTime;
+            bool isOvernight = arrTime.TotalMinutes >= 1440;
+
+            // Conflict check — exclude current schedule
+            var exactExists = await _scheduleRepository
+                .ExistsAsync(dto.BusId, dto.TravelDate, depTime);
+            if (exactExists)
+            {
+                // Only a conflict if it's a DIFFERENT schedule
+                var conflicting = await _dbContext.Schedules
+                    .AnyAsync(s =>
+                        s.BusId == dto.BusId &&
+                        s.TravelDate.Date == dto.TravelDate.Date &&
+                        s.DepartureTime == depTime &&
+                        s.ScheduleId != id &&
+                        !s.IsDeleted);
+
+                if (conflicting)
+                    throw new ConflictException(
+                        $"Bus is already scheduled on {dto.TravelDate:dd MMM yyyy} at {depTime:hh\\:mm}.");
+            }
+
+            var hasOverlap = await _scheduleRepository.HasOverlappingScheduleAsync(
+                dto.BusId, dto.TravelDate, depTime, arrWrapped, isOvernight,
+                excludeScheduleId: id);
+            if (hasOverlap)
+                throw new ConflictException(
+                    $"Bus has an overlapping journey on {dto.TravelDate:dd MMM yyyy}. " +
+                    "Please choose a time after the existing journey completes.");
+
+            // Capture old values safely (no navigation props)
+            var oldValues = new
+            {
+                schedule.RouteId,
+                schedule.BusId,
+                TravelDate = schedule.TravelDate.ToString("yyyy-MM-dd"),
+                DepartureTime = schedule.DepartureTime.ToString(),
+                ArrivalTime = schedule.ArrivalTime.ToString(),
+                schedule.IsOvernightArrival
+            };
 
             bool busChanged = schedule.BusId != dto.BusId;
             if (busChanged)
             {
                 int bookedSeats = schedule.TotalSeats - schedule.AvailableSeats;
-
                 if (bookedSeats > bus.TotalSeats)
-                    throw new Exception(
-                        "Cannot change bus. New bus capacity is less than already booked seats.");
-
+                    throw new ConflictException(
+                        "Cannot change bus. New bus has fewer seats than already booked seats.");
                 schedule.TotalSeats = bus.TotalSeats;
                 schedule.AvailableSeats = bus.TotalSeats - bookedSeats;
             }
@@ -230,26 +284,30 @@ namespace BusTicketingSystem.Services
             schedule.RouteId = dto.RouteId;
             schedule.TravelDate = dto.TravelDate.Date;
             schedule.DepartureTime = depTime;
-            schedule.ArrivalTime = arrTime.TotalMinutes >= 1440
-                ? TimeSpan.FromMinutes(arrTime.TotalMinutes % 1440)
-                : arrTime;
-            schedule.IsOvernightArrival = arrTime.TotalMinutes >= 1440;
+            schedule.ArrivalTime = arrWrapped;
+            schedule.IsOvernightArrival = isOvernight;
             schedule.UpdatedAt = DateTime.UtcNow;
 
             await _scheduleRepository.UpdateAsync(schedule);
             await _scheduleRepository.SaveChangesAsync();
 
-            await _auditRepository.LogAuditAsync(
-                "UPDATE",
-                "Schedule",
-                schedule.ScheduleId.ToString(),
-                oldValues,
-                schedule,
-                userId,
-                ipAddress);
+            var newValues = new
+            {
+                schedule.RouteId,
+                schedule.BusId,
+                TravelDate = schedule.TravelDate.ToString("yyyy-MM-dd"),
+                DepartureTime = schedule.DepartureTime.ToString(),
+                ArrivalTime = schedule.ArrivalTime.ToString(),
+                schedule.IsOvernightArrival
+            };
 
-            return ApiResponse<ScheduleResponseDto>
-                .SuccessResponse(MapToDto(schedule));
+            await _auditRepository.LogAuditAsync(
+                "UPDATE", "Schedule", schedule.ScheduleId.ToString(),
+                oldValues, newValues, userId, ipAddress);
+
+            // Reload with navigation props for response
+            var updated = await _scheduleRepository.GetByIdAsync(id);
+            return ApiResponse<ScheduleResponseDto>.SuccessResponse(MapToDto(updated!));
         }
 
 

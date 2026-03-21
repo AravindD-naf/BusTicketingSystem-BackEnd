@@ -20,6 +20,9 @@ namespace BusTicketingSystem.Services
             if (string.IsNullOrWhiteSpace(request.DestinationName))
                 throw new BadRequestException("Destination name is required.");
 
+            if (await _destinationRepository.ExistsByNameAsync(request.DestinationName))
+                throw new BadRequestException($"Destination '{request.DestinationName.Trim()}' already exists.");
+
             var destination = new Destination
             {
                 DestinationName = request.DestinationName.Trim(),
@@ -33,13 +36,13 @@ namespace BusTicketingSystem.Services
             return MapToResponse(destination);
         }
 
-        public async Task<List<DestinationResponseDto>> GetAllDestinationsAsync(int pageNumber, int pageSize)
+        public async Task<(List<DestinationResponseDto> items, int totalCount)> GetAllDestinationsAsync(int pageNumber, int pageSize)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            var destinations = await _destinationRepository.GetAllAsync(pageNumber, pageSize);
-            return destinations.Select(MapToResponse).ToList();
+            var (destinations, totalCount) = await _destinationRepository.GetPagedAsync(pageNumber, pageSize);
+            return (destinations.Select(MapToResponse).ToList(), totalCount);
         }
 
         public async Task<List<DestinationResponseDto>> GetByCityAsync(string cityName)
@@ -67,6 +70,9 @@ namespace BusTicketingSystem.Services
 
             if (string.IsNullOrWhiteSpace(request.DestinationName))
                 throw new BadRequestException("Destination name is required.");
+
+            if (await _destinationRepository.ExistsByNameAsync(request.DestinationName, excludeId: id))
+                throw new BadRequestException($"Destination '{request.DestinationName.Trim()}' already exists.");
 
             destination.DestinationName = request.DestinationName.Trim();
             destination.Description = request.Description?.Trim() ?? string.Empty;

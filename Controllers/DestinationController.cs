@@ -39,8 +39,19 @@ namespace BusTicketingSystem.Controllers
         {
             try
             {
-                var result = await _destinationService.GetAllDestinationsAsync(request.PageNumber, request.PageSize);
-                return Ok(ApiResponse<List<DestinationResponseDto>>.SuccessResponse("Destinations retrieved successfully", result));
+                if (request.PageNumber < 1) request.PageNumber = 1;
+                if (request.PageSize < 1) request.PageSize = 10;
+
+                var (items, totalCount) = await _destinationService
+                    .GetAllDestinationsAsync(request.PageNumber, request.PageSize);
+
+                return Ok(ApiResponse<object>.SuccessResponse("Destinations retrieved successfully", new
+                {
+                    items,
+                    totalCount,
+                    pageNumber = request.PageNumber,
+                    pageSize = request.PageSize
+                }));
             }
             catch (Exception ex)
             {

@@ -9,6 +9,8 @@ namespace BusTicketingSystem.Repositories
         Task<Destination> GetByIdAsync(int id);
         Task<List<Destination>> GetAllAsync(int pageNumber, int pageSize);
         Task<List<Destination>> GetByCityAsync(string cityName);
+        Task<(List<Destination> items, int totalCount)> GetPagedAsync(int pageNumber, int pageSize);
+        Task<bool> ExistsByNameAsync(string name, int? excludeId = null);
         Task CreateAsync(Destination destination);
         Task UpdateAsync(Destination destination);
         Task DeleteAsync(int id);
@@ -50,11 +52,18 @@ namespace BusTicketingSystem.Repositories
                 .ToListAsync();
         }
 
-        public async Task<(List<Source> items, int totalCount)> GetPagedAsync(int pageNumber, int pageSize)
+        public async Task<(List<Destination> items, int totalCount)> GetPagedAsync(int pageNumber, int pageSize)
         {
-            var query = _dbContext.Sources.Where(s => !s.IsDeleted).OrderBy(s => s.SourceId);
+            var query = _dbContext.Destinations
+                .Where(d => !d.IsDeleted)
+                .OrderBy(d => d.DestinationId);
+
             var totalCount = await query.CountAsync();
-            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
             return (items, totalCount);
         }
 
@@ -79,6 +88,16 @@ namespace BusTicketingSystem.Repositories
                 destination.UpdatedAt = DateTime.UtcNow;
                 await UpdateAsync(destination);
             }
+        }
+
+        public async Task<bool> ExistsByNameAsync(string name, int? excludeId = null)
+        {
+            var normalizedName = name.Trim().ToLower();
+            return await _dbContext.Destinations
+                .Where(d => !d.IsDeleted &&
+                       d.DestinationName.ToLower() == normalizedName &&
+                       (excludeId == null || d.DestinationId != excludeId))
+                .AnyAsync();
         }
     }
 }
