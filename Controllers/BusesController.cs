@@ -49,8 +49,14 @@ namespace BusTicketingSystem.Controllers
                 if (request.PageNumber < 1) request.PageNumber = 1;
                 if (request.PageSize < 1) request.PageSize = 10;
 
-                var result = await _busService.GetAllBusesAsync(request.PageNumber, request.PageSize);
-                return Ok(ApiResponse<List<BusResponse>>.SuccessResponse("Buses retrieved successfully", result));
+                var (items, totalCount) = await _busService.GetAllBusesAsync(request.PageNumber, request.PageSize);
+                return Ok(ApiResponse<object>.SuccessResponse("Buses retrieved successfully", new
+                {
+                    items,
+                    totalCount,
+                    pageNumber = request.PageNumber,
+                    pageSize = request.PageSize
+                }));
             }
             catch (Exception ex)
             {

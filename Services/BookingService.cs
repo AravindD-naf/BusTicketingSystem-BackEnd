@@ -185,13 +185,10 @@ namespace BusTicketingSystem.Services
                 .SuccessResponse(bookings.Select(MapToDto).ToList());
         }
 
-        public async Task<ApiResponse<List<BookingResponseDto>>>
-            GetAllBookingsAsync()
+        public async Task<(List<BookingResponseDto> items, int totalCount)> GetAllBookingsAsync(int pageNumber, int pageSize)
         {
-            var bookings = await _bookingRepository.GetAllAsync();
-
-            return ApiResponse<List<BookingResponseDto>>
-                .SuccessResponse(bookings.Select(MapToDto).ToList());
+            var (bookings, totalCount) = await _bookingRepository.GetPagedAsync(pageNumber, pageSize);
+            return (bookings.Select(MapToDto).ToList(), totalCount);
         }
 
         public async Task<ApiResponse<BookingDetailResponseDto>> GetBookingByIdAsync(int bookingId)

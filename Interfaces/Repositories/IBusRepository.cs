@@ -8,6 +8,7 @@ namespace BusTicketingSystem.Interfaces.Repositories
         Task<Bus?> GetByIdAsync(int id);
         Task<Bus?> GetByBusNumberAsync(string busNumber);
         Task<List<Bus>> GetAllAsync(int pageNumber, int pageSize);
+        Task<(List<Bus> items, int totalCount)> GetPagedAsync(int pageNumber, int pageSize);
         Task<int> CountAsync();
         Task UpdateAsync(Bus bus);
         Task<(List<Bus>, int totalCount)> GetByOperatorAsync(

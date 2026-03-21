@@ -16,12 +16,10 @@ namespace BusTicketingSystem.Interfaces.Services
 
         Task<int> CleanupExpiredBookingsAsync();
 
-        Task<ApiResponse<List<BookingResponseDto>>>
-            GetAllBookingsAsync();
+        Task<(List<BookingResponseDto> items, int totalCount)> GetAllBookingsAsync(int pageNumber, int pageSize);
 
         Task<ApiResponse<BookingDetailResponseDto>> GetBookingByIdAsync(int bookingId);
 
- 
         Task<ApiResponse<bool>> CancelBookingAsync(
             int bookingId,
             int userId,

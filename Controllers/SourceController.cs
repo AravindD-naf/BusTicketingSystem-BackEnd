@@ -39,8 +39,16 @@ namespace BusTicketingSystem.Controllers
         {
             try
             {
-                var result = await _sourceService.GetAllSourcesAsync(request.PageNumber, request.PageSize);
-                return Ok(ApiResponse<List<SourceResponseDto>>.SuccessResponse("Sources retrieved successfully", result));
+                var (items, totalCount) = await _sourceService
+                    .GetAllSourcesAsync(request.PageNumber, request.PageSize);
+
+                return Ok(ApiResponse<object>.SuccessResponse("Sources retrieved successfully", new
+                {
+                    items,
+                    totalCount,
+                    pageNumber = request.PageNumber,
+                    pageSize = request.PageSize
+                }));
             }
             catch (Exception ex)
             {

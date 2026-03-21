@@ -38,13 +38,13 @@ namespace BusTicketingSystem.Services
             return MapToResponse(source);
         }
 
-        public async Task<List<SourceResponseDto>> GetAllSourcesAsync(int pageNumber, int pageSize)
+        public async Task<(List<SourceResponseDto> items, int totalCount)> GetAllSourcesAsync(int pageNumber, int pageSize)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
-            var sources = await _sourceRepository.GetAllAsync(pageNumber, pageSize);
-            return sources.Select(MapToResponse).ToList();
+            var (sources, totalCount) = await _sourceRepository.GetPagedAsync(pageNumber, pageSize);
+            return (sources.Select(MapToResponse).ToList(), totalCount);
         }
 
         public async Task<List<SourceResponseDto>> GetByCityAsync(string cityName)

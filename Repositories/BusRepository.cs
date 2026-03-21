@@ -36,6 +36,22 @@ namespace BusTicketingSystem.Repositories
             }
         }
 
+
+        public async Task<(List<Bus> items, int totalCount)> GetPagedAsync(int pageNumber, int pageSize)
+        {
+            var query = _context.Buses
+                .Where(b => !b.IsDeleted)
+                .OrderBy(b => b.BusId);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
+
         public async Task<Bus?> GetByIdAsync(int id)
         {
             return await _context.Buses

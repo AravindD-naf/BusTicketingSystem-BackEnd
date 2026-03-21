@@ -3,6 +3,7 @@ using BusTicketingSystem.DTOs.Requests;
 using BusTicketingSystem.Helpers;
 using BusTicketingSystem.Interfaces.Services;
 using BusTicketingSystem.Models;
+using BusTicketingSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -18,19 +19,23 @@ namespace BusTicketingSystem.Controllers
         private readonly IPaymentService _paymentService;
         private readonly IPassengerService _passengerService;
         private readonly IScheduleService _scheduleService;
+        private readonly IBusService _busService;   
+
 
         public BookingController(
             IBookingService bookingService,
             ISeatService seatService,
             IPaymentService paymentService,
             IPassengerService passengerService,
-            IScheduleService scheduleService)
+            IScheduleService scheduleService,
+            IBusService busService)
         {
             _bookingService = bookingService;
             _seatService = seatService;
             _paymentService = paymentService;
             _passengerService = passengerService;
             _scheduleService = scheduleService;
+            _busService = busService;
         }
 
         #region Schedule Browsing Endpoints
@@ -270,17 +275,19 @@ namespace BusTicketingSystem.Controllers
                 if (request.PageNumber < 1) request.PageNumber = 1;
                 if (request.PageSize < 1) request.PageSize = 10;
 
-                return Ok(await _bookingService
-                    .GetAllBookingsAsync());
+                var (items, totalCount) = await _bookingService.GetAllBookingsAsync(request.PageNumber, request.PageSize);
+
+                return Ok(ApiResponse<object>.SuccessResponse("Bookings retrieved successfully", new
+                {
+                    items,
+                    totalCount,
+                    pageNumber = request.PageNumber,
+                    pageSize = request.PageSize
+                }));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
+                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
             }
         }
 
@@ -441,6 +448,31 @@ namespace BusTicketingSystem.Controllers
         }
 
         #endregion
+
+        [Authorize(Roles = "Customer")]
+        [HttpPost("{bookingId}/rate")]
+        public async Task<IActionResult> RateBus(int bookingId, [FromBody] RateBusRequestDto dto)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                return Unauthorized();
+
+            int userId = int.Parse(userIdClaim.Value);
+
+            // Validate booking belongs to user and is Confirmed
+            var booking = await _bookingService.GetBookingByIdAsync(bookingId);
+            if (booking?.Data == null)
+                return NotFound();
+
+            if (booking.Data.BookingStatus != "Confirmed")
+                return BadRequest(ApiResponse<string>.FailureResponse("You can only rate a confirmed booking."));
+
+            // Update bus rating
+            await _busService.RateBusAsync(
+                booking.Data.BusId, userId, dto.Rating, ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString() ?? "");
+
+            return Ok(ApiResponse<string>.SuccessResponse("Rating submitted. Thank you!"));
+        }
 
         #region Passenger Endpoints
 
