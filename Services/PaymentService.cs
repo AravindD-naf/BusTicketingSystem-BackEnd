@@ -215,16 +215,20 @@ namespace BusTicketingSystem.Services
             if (booking.UserId != userId)
                 throw new UnauthorizedAccessException("You cannot initiate refund for this booking.");
 
-            if (booking.CancelledBy == "Customer")
-                throw new RefundOperationException(
-                    "Refunds are not applicable for customer-initiated cancellations.",
-                    RefundOperationException.RefundErrorType.InvalidRefund);
+            //if (booking.CancelledBy == "Customer")
+            //    throw new RefundOperationException(
+            //        "Refunds are not applicable for customer-initiated cancellations.",
+            //        RefundOperationException.RefundErrorType.InvalidRefund);
 
             var payment = await _paymentRepository.GetByBookingIdAsync(bookingId);
             if (payment == null || payment.Status != PaymentStatus.Success)
                 throw new RefundOperationException(
                     "Can only refund for confirmed payments",
                     RefundOperationException.RefundErrorType.InvalidRefund);
+
+            var existingRefund = await _refundRepository.GetByBookingIdAsync(bookingId);
+            if (existingRefund != null)
+                return ApiResponse<RefundResponseDto>.SuccessResponse(MapToDto(existingRefund));
 
             // Calculate refund amount
             var (refundAmount, refundPercentage, cancellationFee) = await CalculateRefundAsync(bookingId);
@@ -329,6 +333,13 @@ namespace BusTicketingSystem.Services
 
             await _paymentRepository.SaveChangesAsync();
             return expiredPayments.Count;
+        }
+
+        public async Task<ApiResponse<RefundResponseDto?>> GetRefundByBookingIdAsync(int bookingId)
+        {
+            var refund = await _refundRepository.GetByBookingIdAsync(bookingId);
+            if (refund == null) return ApiResponse<RefundResponseDto?>.SuccessResponse((RefundResponseDto?)null);
+            return ApiResponse<RefundResponseDto?>.SuccessResponse(MapToDto(refund));
         }
 
 

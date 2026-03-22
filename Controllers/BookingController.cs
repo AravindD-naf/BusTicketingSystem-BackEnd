@@ -231,6 +231,14 @@ namespace BusTicketingSystem.Controllers
             return Ok(result);
         }
 
+        [Authorize(Roles = "Customer,Admin")]
+        [HttpGet("{bookingId}/refund")]
+        public async Task<IActionResult> GetRefundByBooking(int bookingId)
+        {
+            var result = await _paymentService.GetRefundByBookingIdAsync(bookingId);
+            return Ok(result);
+        }
+
         #endregion
 
         private int GetUserId() =>

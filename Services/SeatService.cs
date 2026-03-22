@@ -52,7 +52,7 @@ namespace BusTicketingSystem.Services
                 BusNumber = schedule.Bus?.BusNumber ?? string.Empty,
                 BaseFare = schedule.Route?.BaseFare ?? 0,
                 TotalSeats = schedule.TotalSeats,
-                AvailableSeats = schedule.AvailableSeats,
+                AvailableSeats = seats.Count(s => s.SeatStatus == "Available"),
                 LockedSeats = seats.Count(s => s.SeatStatus == "Locked"),
                 BookedSeats = seats.Count(s => s.SeatStatus == "Booked"),
                 Seats = seats.Select(s => new SeatResponseDto

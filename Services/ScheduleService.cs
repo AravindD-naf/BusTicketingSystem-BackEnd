@@ -363,6 +363,21 @@ namespace BusTicketingSystem.Services
                 .SuccessResponse(schedules.Select(MapToDto).ToList());
         }
 
+        private async Task SyncAvailableSeatsAsync(IEnumerable<Schedule> schedules)
+        {
+            foreach (var schedule in schedules)
+            {
+                var seats = await _seatRepository.GetSeatsByScheduleIdAsync(schedule.ScheduleId);
+                var realAvailable = seats.Count(s => s.SeatStatus == "Available");
+                if (schedule.AvailableSeats != realAvailable)
+                {
+                    schedule.AvailableSeats = realAvailable;
+                    await _scheduleRepository.UpdateAsync(schedule);
+                }
+            }
+            await _scheduleRepository.SaveChangesAsync();
+        }
+
         public async Task<ApiResponse<List<ScheduleResponseDto>>>
             SearchSchedulesAsync(
                 string fromCity,
@@ -371,6 +386,9 @@ namespace BusTicketingSystem.Services
         {
             var schedules = await _scheduleRepository
                 .SearchSchedulesAsync(fromCity, toCity, travelDate.Date);
+
+            // Sync stale AvailableSeats counter before returning to user
+            await SyncAvailableSeatsAsync(schedules);
 
             return ApiResponse<List<ScheduleResponseDto>>
                 .SuccessResponse(schedules.Select(MapToDto).ToList());

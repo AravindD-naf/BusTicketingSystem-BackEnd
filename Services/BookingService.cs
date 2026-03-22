@@ -14,18 +14,21 @@ namespace BusTicketingSystem.Services
         private readonly IScheduleRepository _scheduleRepository;
         private readonly ISeatRepository _seatRepository;
         private readonly IAuditRepository _auditRepository;
+        private readonly IPaymentService _paymentService;
 
         public BookingService(
             IBookingRepository bookingRepository,
             IScheduleRepository scheduleRepository,
             ISeatRepository seatRepository,
             ISeatService seatService,
-            IAuditRepository auditRepository)
+            IAuditRepository auditRepository,
+            IPaymentService paymentService)
         {
             _bookingRepository = bookingRepository;
             _scheduleRepository = scheduleRepository;
             _seatRepository = seatRepository;
             _auditRepository = auditRepository;
+            _paymentService = paymentService;
         }
 
 
@@ -271,20 +274,26 @@ namespace BusTicketingSystem.Services
             if (departureDateTime <= DateTime.UtcNow)
                 throw new BookingOperationException("Cannot cancel a booking after the departure time.", BookingOperationException.BookingErrorType.BookingExpired);
 
+            var wasConfirmed = booking.BookingStatus == BookingStatus.Confirmed;
+
             using (var transaction = await _scheduleRepository.BeginTransactionAsync())
             {
                 try
                 {
                     var seats = await _seatRepository.GetSeatsByScheduleIdAsync(booking.ScheduleId);
-
+                    
                     // ── KEY CHANGE ── handle both Locked (pending payment) and Booked (paid)
                     var affectedSeats = seats
                         .Where(s => s.BookingId == bookingId &&
                                (s.SeatStatus == "Booked" || s.SeatStatus == "Locked"))
                         .ToList();
 
+                    // FIX — capture count BEFORE modifying statuses
                     if (affectedSeats.Count > 0)
                     {
+                        // Capture BEFORE the loop overwrites SeatStatus
+                        var bookedCount = affectedSeats.Count(s => s.SeatStatus == "Booked");
+
                         var now = DateTime.UtcNow;
                         foreach (var seat in affectedSeats)
                         {
@@ -296,8 +305,7 @@ namespace BusTicketingSystem.Services
                         }
                         await _seatRepository.UpdateManyAsync(affectedSeats);
 
-                        // Only restore AvailableSeats for confirmed (Booked) bookings
-                        var bookedCount = affectedSeats.Count(s => s.SeatStatus == "Booked");
+                        // Restore AvailableSeats for confirmed (Booked) seats
                         if (bookedCount > 0)
                         {
                             schedule.AvailableSeats += bookedCount;
@@ -323,6 +331,15 @@ namespace BusTicketingSystem.Services
 
                     await _bookingRepository.SaveChangesAsync();
                     await transaction.CommitAsync();
+                    // Auto-create refund only for Confirmed bookings (payment was made)
+                    if (wasConfirmed)
+                    {
+                        try
+                        {
+                            await _paymentService.InitiateRefundAsync(bookingId, userId, ipAddress);
+                        }
+                        catch { /* swallow — refund failure should not un-cancel the booking */ }
+                    }
 
                     return ApiResponse<bool>.SuccessResponse(true);
                 }

@@ -16,7 +16,8 @@ namespace BusTicketingSystem.Interfaces.Services
             string ipAddress
             );
 
-  
+        Task<ApiResponse<RefundResponseDto?>> GetRefundByBookingIdAsync(int bookingId);
+
         Task<ApiResponse<PaymentResponseDto>> GetPaymentAsync(int paymentId);
 
         Task<ApiResponse<PaymentResponseDto>> ConfirmPaymentAsync(
