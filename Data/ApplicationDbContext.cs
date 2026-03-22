@@ -63,7 +63,7 @@ namespace BusTicketingSystem.Data
                     IsActive = true,
                     CreatedAt = new DateTime(2025, 01, 01),
                     IsDeleted = false
-                    }
+                }
                 );
 
             modelBuilder.Entity<AuditLog>().HasKey(a => a.AuditId);

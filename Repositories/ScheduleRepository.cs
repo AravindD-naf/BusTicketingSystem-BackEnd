@@ -28,7 +28,7 @@ namespace BusTicketingSystem.Repositories
             var query = _context.Schedules
                 .Include(s => s.Route)
                 .Include(s => s.Bus)
-                .Where(s => !s.IsDeleted);
+                .Where(s => !s.IsDeleted && !s.Route.IsDeleted);
 
             if (!string.IsNullOrWhiteSpace(keyword))
             {
