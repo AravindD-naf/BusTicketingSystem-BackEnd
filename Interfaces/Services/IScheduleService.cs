@@ -11,7 +11,7 @@ namespace BusTicketingSystem.Interfaces.Services
             string ipAddress);
 
         Task<ApiResponse<PagedResponse<ScheduleResponseDto>>>
-            GetAllAsync(int pageNumber, int pageSize);
+            GetAllAsync(int pageNumber, int pageSize, string? keyword = null);
 
         Task<ApiResponse<ScheduleResponseDto>> GetByIdAsync(int id);
 

@@ -6,7 +6,7 @@ namespace BusTicketingSystem.Interfaces.Repositories
     public interface IScheduleRepository : IRepository<Schedule>
     {
         Task<Schedule?> GetByIdAsync(int id);
-        Task<(IEnumerable<Schedule> schedules, int totalCount)> GetPagedAsync(int pageNumber, int pageSize);
+        Task<(IEnumerable<Schedule> schedules, int totalCount)>GetPagedAsync(int pageNumber, int pageSize, string? keyword = null);
         Task<bool> ExistsAsync(int busId, DateTime travelDate, TimeSpan departureTime);
         Task UpdateAsync(Schedule schedule);
         Task<bool> ExistsForUpdateAsync(int busId, int routeId, DateTime travelDate, TimeSpan departureTime, int currentScheduleId);

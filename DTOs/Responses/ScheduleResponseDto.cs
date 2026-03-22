@@ -16,6 +16,7 @@
         public TimeSpan DepartureTime { get; set; }
         public TimeSpan ArrivalTime { get; set; }
         public bool IsOvernightArrival { get; set; }
+        public int DurationMinutes { get; set; }
         public int TotalSeats { get; set; }
         public int AvailableSeats { get; set; }
         public bool IsActive { get; set; }

@@ -23,17 +23,26 @@ namespace BusTicketingSystem.Repositories
                 .FirstOrDefaultAsync(s => s.ScheduleId == id && !s.IsDeleted);
         }
 
-        public async Task<(IEnumerable<Schedule>, int)>
-            GetPagedAsync(int pageNumber, int pageSize)
+        public async Task<(IEnumerable<Schedule>, int)>GetPagedAsync(int pageNumber, int pageSize, string? keyword = null)
         {
             var query = _context.Schedules
+                .Include(s => s.Route)
+                .Include(s => s.Bus)
                 .Where(s => !s.IsDeleted);
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                var kw = keyword.Trim().ToLower();
+                query = query.Where(s =>
+                    s.Route.Source.ToLower().Contains(kw) ||
+                    s.Route.Destination.ToLower().Contains(kw) ||
+                    s.Bus.BusNumber.ToLower().Contains(kw) ||
+                    s.Bus.OperatorName.ToLower().Contains(kw));
+            }
 
             var totalCount = await query.CountAsync();
 
             var schedules = await query
-                .Include(s => s.Route)
-                .Include(s => s.Bus)
                 .OrderByDescending(s => s.TravelDate)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)

@@ -33,7 +33,7 @@ namespace BusTicketingSystem.Controllers
         {
             if (request.PageNumber < 1) request.PageNumber = 1;
             if (request.PageSize < 1) request.PageSize = 10;
-            var response = await _scheduleService.GetAllAsync(request.PageNumber, request.PageSize);
+            var response = await _scheduleService.GetAllAsync(request.PageNumber, request.PageSize, request.Keyword);
             return Ok(response);
         }
 

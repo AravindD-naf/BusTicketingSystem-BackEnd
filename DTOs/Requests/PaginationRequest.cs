@@ -4,6 +4,7 @@ namespace BusTicketingSystem.DTOs.Requests
     {
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
+        public string? Keyword { get; set; }
     }
 
     public class SearchAndSortRequest : PaginationRequest

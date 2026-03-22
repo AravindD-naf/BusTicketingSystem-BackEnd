@@ -8,6 +8,7 @@ using BusTicketingSystem.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 
 namespace BusTicketingSystem.Services
 {
@@ -162,10 +163,10 @@ namespace BusTicketingSystem.Services
         }
 
         public async Task<ApiResponse<PagedResponse<ScheduleResponseDto>>>
-            GetAllAsync(int pageNumber, int pageSize)
+            GetAllAsync(int pageNumber, int pageSize, string? keyword = null)
         {
             var (schedules, totalCount) =
-                await _scheduleRepository.GetPagedAsync(pageNumber, pageSize);
+                await _scheduleRepository.GetPagedAsync(pageNumber, pageSize, keyword);
 
             var mapped = schedules.Select(MapToDto).ToList();
 
@@ -377,6 +378,13 @@ namespace BusTicketingSystem.Services
 
         private ScheduleResponseDto MapToDto(Schedule s)
         {
+            // Calculate actual duration from departure and arrival times
+            int depMins = (int)s.DepartureTime.TotalMinutes;
+            int arrMins = (int)s.ArrivalTime.TotalMinutes;
+            int durationMinutes = s.IsOvernightArrival
+                ? (1440 - depMins) + arrMins   // overnight: time to midnight + time after midnight
+                : arrMins - depMins;           // same day: simple difference
+
             return new ScheduleResponseDto
             {
                 ScheduleId = s.ScheduleId,
@@ -393,6 +401,7 @@ namespace BusTicketingSystem.Services
                 DepartureTime = s.DepartureTime,
                 ArrivalTime = s.ArrivalTime,
                 IsOvernightArrival = s.IsOvernightArrival,
+                DurationMinutes = durationMinutes,
                 TotalSeats = s.TotalSeats,
                 AvailableSeats = s.AvailableSeats,
                 IsActive = s.IsActive
