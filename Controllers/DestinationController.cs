@@ -22,102 +22,59 @@ namespace BusTicketingSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateDestination([FromBody] CreateDestinationRequest request)
         {
-            try
-            {
-                var result = await _destinationService.CreateDestinationAsync(request);
-                return Ok(ApiResponse<DestinationResponseDto>.SuccessResponse("Destination created successfully", result));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            var result = await _destinationService.CreateDestinationAsync(request);
+            return Ok(ApiResponse<DestinationResponseDto>.SuccessResponse("Destination created successfully", result));
         }
 
         [AllowAnonymous]
         [HttpPost("get-all")]
         public async Task<IActionResult> GetAllDestinations([FromBody] PaginationRequest request)
         {
-            try
+            if (request.PageNumber < 1) request.PageNumber = 1;
+            if (request.PageSize < 1) request.PageSize = 10;
+            var (items, totalCount) = await _destinationService
+                .GetAllDestinationsAsync(request.PageNumber, request.PageSize);
+            return Ok(ApiResponse<object>.SuccessResponse("Destinations retrieved successfully", new
             {
-                if (request.PageNumber < 1) request.PageNumber = 1;
-                if (request.PageSize < 1) request.PageSize = 10;
-
-                var (items, totalCount) = await _destinationService
-                    .GetAllDestinationsAsync(request.PageNumber, request.PageSize);
-
-                return Ok(ApiResponse<object>.SuccessResponse("Destinations retrieved successfully", new
-                {
-                    items,
-                    totalCount,
-                    pageNumber = request.PageNumber,
-                    pageSize = request.PageSize
-                }));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+                items,
+                totalCount,
+                pageNumber = request.PageNumber,
+                pageSize = request.PageSize
+            }));
         }
-
 
         [AllowAnonymous]
         [HttpGet("by-city/{cityName}")]
         public async Task<IActionResult> GetByCity(string cityName)
         {
-            try
-            {
-                var result = await _destinationService.GetByCityAsync(cityName);
-                return Ok(ApiResponse<List<DestinationResponseDto>>.SuccessResponse("Destinations retrieved successfully", result));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            var result = await _destinationService.GetByCityAsync(cityName);
+            return Ok(ApiResponse<List<DestinationResponseDto>>.SuccessResponse(
+                "Destinations retrieved successfully", result));
         }
 
         [AllowAnonymous]
         [HttpPost("{id}")]
         public async Task<IActionResult> GetDestinationById(int id)
         {
-            try
-            {
-                var result = await _destinationService.GetDestinationByIdAsync(id);
-                return Ok(ApiResponse<DestinationResponseDto>.SuccessResponse("Destination retrieved successfully", result));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            var result = await _destinationService.GetDestinationByIdAsync(id);
+            return Ok(ApiResponse<DestinationResponseDto>.SuccessResponse(
+                "Destination retrieved successfully", result));
         }
 
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateDestination(int id, [FromBody] UpdateDestinationRequest request)
         {
-            try
-            {
-                await _destinationService.UpdateDestinationAsync(id, request);
-                return Ok(ApiResponse<string>.SuccessResponse("Destination updated successfully"));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            await _destinationService.UpdateDestinationAsync(id, request);
+            return Ok(ApiResponse<string>.SuccessResponse("Destination updated successfully"));
         }
 
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteDestination(int id)
         {
-            try
-            {
-                await _destinationService.DeleteDestinationAsync(id);
-                return Ok(ApiResponse<string>.SuccessResponse("Destination deleted successfully"));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            await _destinationService.DeleteDestinationAsync(id);
+            return Ok(ApiResponse<string>.SuccessResponse("Destination deleted successfully"));
         }
     }
 }

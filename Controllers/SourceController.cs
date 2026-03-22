@@ -22,98 +22,56 @@ namespace BusTicketingSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateSource([FromBody] CreateSourceRequest request)
         {
-            try
-            {
-                var result = await _sourceService.CreateSourceAsync(request);
-                return Ok(ApiResponse<SourceResponseDto>.SuccessResponse("Source created successfully", result));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            var result = await _sourceService.CreateSourceAsync(request);
+            return Ok(ApiResponse<SourceResponseDto>.SuccessResponse("Source created successfully", result));
         }
 
         [AllowAnonymous]
         [HttpPost("get-all")]
         public async Task<IActionResult> GetAllSources([FromBody] PaginationRequest request)
         {
-            try
+            var (items, totalCount) = await _sourceService
+                .GetAllSourcesAsync(request.PageNumber, request.PageSize);
+            return Ok(ApiResponse<object>.SuccessResponse("Sources retrieved successfully", new
             {
-                var (items, totalCount) = await _sourceService
-                    .GetAllSourcesAsync(request.PageNumber, request.PageSize);
-
-                return Ok(ApiResponse<object>.SuccessResponse("Sources retrieved successfully", new
-                {
-                    items,
-                    totalCount,
-                    pageNumber = request.PageNumber,
-                    pageSize = request.PageSize
-                }));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+                items,
+                totalCount,
+                pageNumber = request.PageNumber,
+                pageSize = request.PageSize
+            }));
         }
 
         [AllowAnonymous]
         [HttpGet("by-city/{cityName}")]
         public async Task<IActionResult> GetByCity(string cityName)
         {
-            try
-            {
-                var result = await _sourceService.GetByCityAsync(cityName);
-                return Ok(ApiResponse<List<SourceResponseDto>>.SuccessResponse("Sources retrieved successfully", result));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            var result = await _sourceService.GetByCityAsync(cityName);
+            return Ok(ApiResponse<List<SourceResponseDto>>.SuccessResponse(
+                "Sources retrieved successfully", result));
         }
 
         [AllowAnonymous]
         [HttpPost("{id}")]
         public async Task<IActionResult> GetSourceById(int id)
         {
-            try
-            {
-                var result = await _sourceService.GetSourceByIdAsync(id);
-                return Ok(ApiResponse<SourceResponseDto>.SuccessResponse("Source retrieved successfully", result));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            var result = await _sourceService.GetSourceByIdAsync(id);
+            return Ok(ApiResponse<SourceResponseDto>.SuccessResponse("Source retrieved successfully", result));
         }
 
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateSource(int id, [FromBody] UpdateSourceRequest request)
         {
-            try
-            {
-                await _sourceService.UpdateSourceAsync(id, request);
-                return Ok(ApiResponse<string>.SuccessResponse("Source updated successfully"));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            await _sourceService.UpdateSourceAsync(id, request);
+            return Ok(ApiResponse<string>.SuccessResponse("Source updated successfully"));
         }
 
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSource(int id)
         {
-            try
-            {
-                await _sourceService.DeleteSourceAsync(id);
-                return Ok(ApiResponse<string>.SuccessResponse("Source deleted successfully"));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            await _sourceService.DeleteSourceAsync(id);
+            return Ok(ApiResponse<string>.SuccessResponse("Source deleted successfully"));
         }
     }
 }

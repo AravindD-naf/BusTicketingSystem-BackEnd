@@ -10,6 +10,7 @@
         // TimeSpan binding fails for hours > 23 at the model binding layer
         public string DepartureTime { get; set; } = string.Empty;
         public string ArrivalTime { get; set; } = string.Empty;
+        public decimal Fare { get; set; } = 0;
 
         // Parsed TimeSpans — used internally by the service
         public TimeSpan DepartureTimeSpan =>

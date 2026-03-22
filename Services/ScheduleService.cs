@@ -1,10 +1,10 @@
 ﻿using BusTicketingSystem.Common.Responses;
-using BusTicketingSystem.Data;
 using BusTicketingSystem.DTOs;
 using BusTicketingSystem.Exceptions;
 using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Interfaces.Services;
 using BusTicketingSystem.Models;
+using BusTicketingSystem.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -17,7 +17,7 @@ namespace BusTicketingSystem.Services
         private readonly IRouteRepository _routeRepository;
         private readonly IBusRepository _busRepository;
         private readonly IAuditRepository _auditRepository;
-        private readonly ApplicationDbContext _dbContext;
+        private readonly ISeatRepository _seatRepository;
         private readonly JsonSerializerOptions _jsonOptions;
 
         public ScheduleService(
@@ -25,18 +25,18 @@ namespace BusTicketingSystem.Services
             IRouteRepository routeRepository,
             IBusRepository busRepository,
             IAuditRepository auditRepository,
-            ApplicationDbContext dbContext)
+            ISeatRepository seatRepository)
         {
             _scheduleRepository = scheduleRepository;
             _routeRepository = routeRepository;
             _busRepository = busRepository;
             _auditRepository = auditRepository;
-            _dbContext = dbContext;
             _jsonOptions = new JsonSerializerOptions
             {
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
                 WriteIndented = false
             };
+            _seatRepository = seatRepository;
         }
 
         public async Task<ApiResponse<ScheduleResponseDto>> CreateAsync(
@@ -98,6 +98,7 @@ namespace BusTicketingSystem.Services
                 IsOvernightArrival = isOvernight,
                 TotalSeats = bus.TotalSeats,
                 AvailableSeats = bus.TotalSeats,
+                Fare = dto.Fare > 0 ? dto.Fare : 0,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -130,12 +131,12 @@ namespace BusTicketingSystem.Services
                     }
                 }
 
-                await _dbContext.Seats.AddRangeAsync(seats);
-                await _dbContext.SaveChangesAsync();
+                await _seatRepository.AddRangeAsync(seats);
+                await _seatRepository.SaveChangesAsync();
             }
             catch (Exception ex)
             {
-                throw new Exception("Error generating seats for schedule: " + ex.Message);
+                throw new DatabaseException("Failed to generate seats for the schedule.", ex);
             }
 
             // Activate the bus when it's scheduled to a route
@@ -184,7 +185,7 @@ namespace BusTicketingSystem.Services
         {
             var schedule = await _scheduleRepository.GetByIdAsync(id);
             if (schedule == null)
-                throw new Exception("Schedule not found.");
+                throw new ResourceNotFoundException("Schedule", id.ToString());
 
             return ApiResponse<ScheduleResponseDto>
                 .SuccessResponse(MapToDto(schedule));
@@ -237,7 +238,7 @@ namespace BusTicketingSystem.Services
             if (exactExists)
             {
                 // Only a conflict if it's a DIFFERENT schedule
-                var conflicting = await _dbContext.Schedules
+                var conflicting = await _scheduleRepository.GetQueryable()
                     .AnyAsync(s =>
                         s.BusId == dto.BusId &&
                         s.TravelDate.Date == dto.TravelDate.Date &&
@@ -286,6 +287,7 @@ namespace BusTicketingSystem.Services
             schedule.DepartureTime = depTime;
             schedule.ArrivalTime = arrWrapped;
             schedule.IsOvernightArrival = isOvernight;
+            schedule.Fare = dto.Fare > 0 ? dto.Fare : 0;
             schedule.UpdatedAt = DateTime.UtcNow;
 
             await _scheduleRepository.UpdateAsync(schedule);
@@ -318,7 +320,7 @@ namespace BusTicketingSystem.Services
         {
             var schedule = await _scheduleRepository.GetByIdAsync(id);
             if (schedule == null)
-                throw new Exception("Schedule not found.");
+                throw new ResourceNotFoundException("Schedule", id.ToString());
 
             schedule.IsDeleted = true;
             schedule.IsActive = false;
@@ -381,7 +383,7 @@ namespace BusTicketingSystem.Services
                 RouteId = s.RouteId,
                 Source = s.Route?.Source,
                 Destination = s.Route?.Destination,
-                BaseFare = s.Route?.BaseFare ?? 0,
+                BaseFare = s.Fare > 0 ? s.Fare : (s.Route?.BaseFare ?? 0),
                 BusId = s.BusId,
                 BusNumber = s.Bus?.BusNumber,
                 OperatorName = s.Bus?.OperatorName,

@@ -31,6 +31,9 @@ namespace BusTicketingSystem.Models
 
         // Marks overnight journeys where arrival is next day
         public bool IsOvernightArrival { get; set; } = false;
+        
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal Fare { get; set; } = 0;
 
         [Required]
         public int TotalSeats { get; set; }

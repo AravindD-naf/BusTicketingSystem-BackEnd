@@ -215,6 +215,11 @@ namespace BusTicketingSystem.Services
             if (booking.UserId != userId)
                 throw new UnauthorizedAccessException("You cannot initiate refund for this booking.");
 
+            if (booking.CancelledBy == "Customer")
+                throw new RefundOperationException(
+                    "Refunds are not applicable for customer-initiated cancellations.",
+                    RefundOperationException.RefundErrorType.InvalidRefund);
+
             var payment = await _paymentRepository.GetByBookingIdAsync(bookingId);
             if (payment == null || payment.Status != PaymentStatus.Success)
                 throw new RefundOperationException(

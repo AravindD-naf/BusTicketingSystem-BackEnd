@@ -5,14 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Repositories
 {
-    public class RouteRepository : IRouteRepository
+    public class RouteRepository : Repository<Models.Route>, IRouteRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public RouteRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        public RouteRepository(ApplicationDbContext context) : base(context) { }
 
         public async Task<Models.Route?> GetByIdAsync(int id)
         {
@@ -62,8 +57,9 @@ namespace BusTicketingSystem.Repositories
         public async Task<(IEnumerable<Models.Route> Routes, int TotalCount)>
             GetBySourceAsync(string source, int pageNumber, int pageSize)
         {
+            var normalizedSource = source.Trim().ToLower();
             var query = _context.Routes
-                .Where(r => r.Source.ToLower() == source.ToLower());
+                .Where(r => r.Source.ToLower().Trim() == normalizedSource);
 
             var totalCount = await query.CountAsync();
 
@@ -79,8 +75,9 @@ namespace BusTicketingSystem.Repositories
         public async Task<(IEnumerable<Models.Route> Routes, int TotalCount)>
             GetByDestinationAsync(string destination, int pageNumber, int pageSize)
         {
+            var normalizedDestination = destination.Trim().ToLower();
             var query = _context.Routes
-                .Where(r => r.Destination.ToLower() == destination.ToLower());
+                .Where(r => r.Destination.ToLower().Trim() == normalizedDestination);
 
             var totalCount = await query.CountAsync();
 

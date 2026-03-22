@@ -5,15 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Repositories
 {
-    public class SeatLockRepository : ISeatLockRepository
+    public class SeatLockRepository : Repository<SeatLock>, ISeatLockRepository
     {
-        private readonly ApplicationDbContext _context;
         private const int LOCK_EXPIRY_MINUTES = 5;
 
-        public SeatLockRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        public SeatLockRepository(ApplicationDbContext context) : base(context) { }
 
         public async Task AddAsync(SeatLock seatLock)
         {

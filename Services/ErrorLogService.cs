@@ -1,14 +1,9 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json;
-using System.Threading.Tasks;
-using BusTicketingSystem.Data;
+using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Models;
-using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Services
 {
-   
     public interface IErrorLogService
     {
         Task LogErrorAsync(
@@ -19,10 +14,10 @@ namespace BusTicketingSystem.Services
         Task<List<ErrorLog>> GetErrorsAsync(
             int pageNumber = 1,
             int pageSize = 10,
-            string errorCode = null,
+            string? errorCode = null,
             bool? isCritical = null);
 
-        Task<ErrorLog> GetErrorAsync(int errorLogId);
+        Task<ErrorLog?> GetErrorAsync(int errorLogId);
 
         Task MarkAsResolvedAsync(int errorLogId, string notes);
 
@@ -31,18 +26,17 @@ namespace BusTicketingSystem.Services
 
     public class ErrorLogService : IErrorLogService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IErrorLogRepository _errorLogRepository;
         private readonly ILogger<ErrorLogService> _logger;
 
         public ErrorLogService(
-            ApplicationDbContext context,
+            IErrorLogRepository errorLogRepository,
             ILogger<ErrorLogService> logger)
         {
-            _context = context;
+            _errorLogRepository = errorLogRepository;
             _logger = logger;
         }
 
-      
         public async Task LogErrorAsync(
             Exception exception,
             HttpContext context,
@@ -91,7 +85,8 @@ namespace BusTicketingSystem.Services
                         if (context.Request.HasFormContentType)
                         {
                             var form = await context.Request.ReadFormAsync();
-                            errorLog.RequestBody = JsonSerializer.Serialize(form.ToDictionary(x => x.Key, x => x.Value.ToString()));
+                            errorLog.RequestBody = JsonSerializer.Serialize(
+                                form.ToDictionary(x => x.Key, x => x.Value.ToString()));
                         }
                     }
                     catch
@@ -117,8 +112,8 @@ namespace BusTicketingSystem.Services
                 errorLog.IsHandled = true;
                 errorLog.CreatedAt = DateTime.UtcNow;
 
-                await _context.ErrorLogs.AddAsync(errorLog);
-                await _context.SaveChangesAsync();
+                await _errorLogRepository.AddAsync(errorLog);
+                await _errorLogRepository.SaveChangesAsync();
 
                 LogToApplicationLogger(errorLog, exception);
             }
@@ -129,61 +124,40 @@ namespace BusTicketingSystem.Services
             }
         }
 
- 
         public async Task<List<ErrorLog>> GetErrorsAsync(
             int pageNumber = 1,
             int pageSize = 10,
-            string errorCode = null,
+            string? errorCode = null,
             bool? isCritical = null)
         {
-            var query = _context.ErrorLogs.AsQueryable();
-
-            if (!string.IsNullOrEmpty(errorCode))
-                query = query.Where(e => e.ErrorCode.Contains(errorCode));
-
-            if (isCritical.HasValue)
-                query = query.Where(e => e.IsCritical == isCritical.Value);
-
-            return await query
-                .OrderByDescending(e => e.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            return await _errorLogRepository.GetPagedAsync(pageNumber, pageSize, errorCode, isCritical);
         }
 
-  
-        public async Task<ErrorLog> GetErrorAsync(int errorLogId)
+        public async Task<ErrorLog?> GetErrorAsync(int errorLogId)
         {
-            return await _context.ErrorLogs.FindAsync(errorLogId);
+            return await _errorLogRepository.GetByIdAsync(errorLogId);
         }
-
 
         public async Task MarkAsResolvedAsync(int errorLogId, string notes)
         {
-            var errorLog = await _context.ErrorLogs.FindAsync(errorLogId);
+            var errorLog = await _errorLogRepository.GetByIdAsync(errorLogId);
             if (errorLog != null)
             {
                 errorLog.ResolvedAt = DateTime.UtcNow;
                 errorLog.ResolutionNotes = notes;
-                _context.ErrorLogs.Update(errorLog);
-                await _context.SaveChangesAsync();
+                _errorLogRepository.Update(errorLog);
+                await _errorLogRepository.SaveChangesAsync();
             }
         }
 
-  
         public async Task DeleteOldErrorsAsync(int daysToKeep = 30)
         {
             var cutoffDate = DateTime.UtcNow.AddDays(-daysToKeep);
-            var oldErrors = await _context.ErrorLogs
-                .Where(e => e.CreatedAt < cutoffDate && e.ResolvedAt != null)
-                .ToListAsync();
+            await _errorLogRepository.DeleteOldResolvedAsync(cutoffDate);
+            await _errorLogRepository.SaveChangesAsync();
 
-            if (oldErrors.Count > 0)
-            {
-                _context.ErrorLogs.RemoveRange(oldErrors);
-                await _context.SaveChangesAsync();
-                _logger.LogInformation($"Deleted {oldErrors.Count} resolved error logs older than {daysToKeep} days");
-            }
+            _logger.LogInformation(
+                "Deleted resolved error logs older than {Days} days", daysToKeep);
         }
 
         private string GetSeverityLevel(int statusCode)

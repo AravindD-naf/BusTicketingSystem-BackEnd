@@ -1,58 +1,10 @@
-﻿//using BusTicketingSystem.DTOs;
-//using BusTicketingSystem.Interfaces.Services;
-//using Microsoft.AspNetCore.Authorization;
-//using Microsoft.AspNetCore.Mvc;
-
-//[ApiController]
-//[Route("api/v1/[controller]")]
-//[Authorize(Roles = "Admin")]
-//public class ScheduleController : ControllerBase
-//{
-//    private readonly IScheduleService _scheduleService;
-
-//    public ScheduleController(IScheduleService scheduleService)
-//    {
-//        _scheduleService = scheduleService;
-//    }
-
-//    [HttpPost]
-//    public async Task<IActionResult> Create(ScheduleRequestDto dto)
-//    {
-//        var response = await _scheduleService
-//            .CreateAsync(dto, 1, HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown");
-
-//        return Ok(response);
-//    }
-
-//    [HttpGet]
-//    public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10)
-//    {
-//        var response = await _scheduleService
-//            .GetAllAsync(pageNumber, pageSize);
-
-//        return Ok(response);
-//    }
-
-//    [HttpGet("{id}")]
-//    public async Task<IActionResult> GetById(int id)
-//    {
-//        var response = await _scheduleService.GetByIdAsync(id);
-//        return Ok(response);
-//    }
-//}
-
-
-
-
-
-
-
-using BusTicketingSystem.DTOs;
+﻿using BusTicketingSystem.DTOs;
 using BusTicketingSystem.DTOs.Requests;
 using BusTicketingSystem.Helpers;
 using BusTicketingSystem.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace BusTicketingSystem.Controllers
 {
@@ -71,12 +23,7 @@ namespace BusTicketingSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] ScheduleRequestDto dto)
         {
-            // REPLACE hardcoded 1 with actual user ID from JWT
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            int userId = userIdClaim != null ? int.Parse(userIdClaim.Value) : 0;
-            string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-
-            var response = await _scheduleService.CreateAsync(dto, userId, ip);
+            var response = await _scheduleService.CreateAsync(dto, GetUserId(), GetIpAddress());
             return Ok(response);
         }
 
@@ -84,45 +31,25 @@ namespace BusTicketingSystem.Controllers
         [HttpPost("get-all")]
         public async Task<IActionResult> GetAll([FromBody] PaginationRequest request)
         {
-            try
-            {
-                if (request.PageNumber < 1) request.PageNumber = 1;
-                if (request.PageSize < 1) request.PageSize = 10;
-
-                var response = await _scheduleService.GetAllAsync(request.PageNumber, request.PageSize);
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            if (request.PageNumber < 1) request.PageNumber = 1;
+            if (request.PageSize < 1) request.PageSize = 10;
+            var response = await _scheduleService.GetAllAsync(request.PageNumber, request.PageSize);
+            return Ok(response);
         }
 
         [AllowAnonymous]
         [HttpPost("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            try
-            {
-                var response = await _scheduleService.GetByIdAsync(id);
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            var response = await _scheduleService.GetByIdAsync(id);
+            return Ok(response);
         }
 
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] ScheduleRequestDto dto)
         {
-            // REPLACE hardcoded 1 with actual user ID from JWT
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            int userId = userIdClaim != null ? int.Parse(userIdClaim.Value) : 0;
-            string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-
-            var response = await _scheduleService.UpdateAsync(id, dto, userId, ip);
+            var response = await _scheduleService.UpdateAsync(id, dto, GetUserId(), GetIpAddress());
             return Ok(response);
         }
 
@@ -130,68 +57,39 @@ namespace BusTicketingSystem.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var response = await _scheduleService.DeleteAsync(
-                id,
-                1,
-                HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown");
-
+            var response = await _scheduleService.DeleteAsync(id, GetUserId(), GetIpAddress());
             return Ok(response);
         }
-
 
         [AllowAnonymous]
         [HttpPost("search-by-from-city")]
         public async Task<IActionResult> GetByFromCity([FromBody] CitySearchRequest request)
         {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(request.City))
-                    return BadRequest(ApiResponse<string>.FailureResponse("City is required"));
-
-                var response = await _scheduleService.GetByFromCityAsync(request.City);
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            var response = await _scheduleService.GetByFromCityAsync(request.City);
+            return Ok(response);
         }
 
         [AllowAnonymous]
         [HttpPost("search-by-to-city")]
         public async Task<IActionResult> GetByToCity([FromBody] CitySearchRequest request)
         {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(request.City))
-                    return BadRequest(ApiResponse<string>.FailureResponse("City is required"));
-
-                var response = await _scheduleService.GetByToCityAsync(request.City);
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            var response = await _scheduleService.GetByToCityAsync(request.City);
+            return Ok(response);
         }
 
         [AllowAnonymous]
         [HttpPost("search")]
         public async Task<IActionResult> Search([FromBody] ScheduleSearchRequest request)
         {
-            try
-            {
-                var response = await _scheduleService.SearchSchedulesAsync(
-                    request.FromCity,
-                    request.ToCity,
-                    request.TravelDate);
-
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+            var response = await _scheduleService.SearchSchedulesAsync(
+                request.FromCity, request.ToCity, request.TravelDateUtc);
+            return Ok(response);
         }
+
+        private int GetUserId() =>
+            int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int id) ? id : 0;
+
+        private string GetIpAddress() =>
+            HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
     }
 }

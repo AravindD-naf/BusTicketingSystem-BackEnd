@@ -1,40 +1,26 @@
 using BusTicketingSystem.Data;
+using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Repositories
 {
-    public interface IDestinationRepository
-    {
-        Task<Destination> GetByIdAsync(int id);
-        Task<List<Destination>> GetAllAsync(int pageNumber, int pageSize);
-        Task<List<Destination>> GetByCityAsync(string cityName);
-        Task<(List<Destination> items, int totalCount)> GetPagedAsync(int pageNumber, int pageSize);
-        Task<bool> ExistsByNameAsync(string name, int? excludeId = null);
-        Task CreateAsync(Destination destination);
-        Task UpdateAsync(Destination destination);
-        Task DeleteAsync(int id);
-    }
 
-    public class DestinationRepository : IDestinationRepository
-    {
-        private readonly ApplicationDbContext _dbContext;
 
-        public DestinationRepository(ApplicationDbContext dbContext)
-        {
-            _dbContext = dbContext;
-        }
+    public class DestinationRepository : Repository<Destination>, IDestinationRepository
+    {
+        public DestinationRepository(ApplicationDbContext context) : base(context) { }
 
         public async Task<Destination> GetByIdAsync(int id)
         {
-            return await _dbContext.Destinations
+            return await _context.Destinations
                 .Where(d => d.DestinationId == id && !d.IsDeleted)
                 .FirstOrDefaultAsync();
         }
 
         public async Task<List<Destination>> GetAllAsync(int pageNumber, int pageSize)
         {
-            return await _dbContext.Destinations
+            return await _context.Destinations
                 .Where(d => !d.IsDeleted)
                 .OrderBy(d => d.DestinationName)
                 .Skip((pageNumber - 1) * pageSize)
@@ -45,7 +31,7 @@ namespace BusTicketingSystem.Repositories
         public async Task<List<Destination>> GetByCityAsync(string cityName)
         {
             var city = cityName.Trim().ToLower();
-            return await _dbContext.Destinations
+            return await _context.Destinations
                 .Where(d => !d.IsDeleted && d.IsActive &&
                             d.DestinationName.ToLower().StartsWith(city))
                 .OrderBy(d => d.DestinationName)
@@ -54,7 +40,7 @@ namespace BusTicketingSystem.Repositories
 
         public async Task<(List<Destination> items, int totalCount)> GetPagedAsync(int pageNumber, int pageSize)
         {
-            var query = _dbContext.Destinations
+            var query = _context.Destinations
                 .Where(d => !d.IsDeleted)
                 .OrderBy(d => d.DestinationId);
 
@@ -69,14 +55,14 @@ namespace BusTicketingSystem.Repositories
 
         public async Task CreateAsync(Destination destination)
         {
-            _dbContext.Destinations.Add(destination);
-            await _dbContext.SaveChangesAsync();
+            _context.Destinations.Add(destination);
+            await _context.SaveChangesAsync();
         }
 
         public async Task UpdateAsync(Destination destination)
         {
-            _dbContext.Destinations.Update(destination);
-            await _dbContext.SaveChangesAsync();
+            _context.Destinations.Update(destination);
+            await _context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(int id)
@@ -93,7 +79,7 @@ namespace BusTicketingSystem.Repositories
         public async Task<bool> ExistsByNameAsync(string name, int? excludeId = null)
         {
             var normalizedName = name.Trim().ToLower();
-            return await _dbContext.Destinations
+            return await _context.Destinations
                 .Where(d => !d.IsDeleted &&
                        d.DestinationName.ToLower() == normalizedName &&
                        (excludeId == null || d.DestinationId != excludeId))

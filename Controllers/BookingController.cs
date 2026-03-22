@@ -1,9 +1,6 @@
-﻿using BusTicketingSystem.DTOs;
-using BusTicketingSystem.DTOs.Requests;
+﻿using BusTicketingSystem.DTOs.Requests;
 using BusTicketingSystem.Helpers;
 using BusTicketingSystem.Interfaces.Services;
-using BusTicketingSystem.Models;
-using BusTicketingSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -19,8 +16,7 @@ namespace BusTicketingSystem.Controllers
         private readonly IPaymentService _paymentService;
         private readonly IPassengerService _passengerService;
         private readonly IScheduleService _scheduleService;
-        private readonly IBusService _busService;   
-
+        private readonly IBusService _busService;
 
         public BookingController(
             IBookingService bookingService,
@@ -38,560 +34,209 @@ namespace BusTicketingSystem.Controllers
             _busService = busService;
         }
 
-        #region Schedule Browsing Endpoints
+        #region Schedule Browsing
 
         [AllowAnonymous]
         [HttpPost("schedules/get-all")]
         public async Task<IActionResult> GetSchedules([FromBody] PaginationRequest request)
         {
-            try
-            {
-                if (request.PageNumber < 1) request.PageNumber = 1;
-                if (request.PageSize < 1) request.PageSize = 10;
-
-                var result = await _scheduleService.GetAllAsync(request.PageNumber, request.PageSize);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            if (request.PageNumber < 1) request.PageNumber = 1;
+            if (request.PageSize < 1) request.PageSize = 10;
+            var result = await _scheduleService.GetAllAsync(request.PageNumber, request.PageSize);
+            return Ok(result);
         }
 
         [AllowAnonymous]
         [HttpPost("schedules/search")]
         public async Task<IActionResult> SearchSchedules([FromBody] ScheduleSearchRequest request)
         {
-            try
-            {
-                var result = await _scheduleService
-                    .SearchSchedulesAsync(request.FromCity, request.ToCity, request.TravelDate);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _scheduleService
+                .SearchSchedulesAsync(request.FromCity, request.ToCity, request.TravelDateUtc);
+            return Ok(result);
         }
 
         #endregion
 
-        #region Seat Management Endpoints
+        #region Seat Management
 
         [Authorize]
         [HttpPost("seats/{scheduleId}")]
         public async Task<IActionResult> GetSeatLayout(int scheduleId)
         {
-            try
-            {
-                var result = await _seatService.GetSeatLayoutAsync(scheduleId);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _seatService.GetSeatLayoutAsync(scheduleId);
+            return Ok(result);
         }
 
-
-        /// Lock selected seats for 5 minutes
         [Authorize(Roles = "Customer")]
         [HttpPost("seats/lock")]
         public async Task<IActionResult> LockSeats([FromBody] LockSeatsRequestDto dto)
         {
-            try
-            {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-                if (userIdClaim == null)
-                {
-                    return Unauthorized(new ApiResponse<string>
-                    {
-                        Success = false,
-                        Message = "Invalid token. UserId claim missing.",
-                        Data = null
-                    });
-                }
-
-                int userId = int.Parse(userIdClaim.Value);
-                string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "";
-
-                var result = await _seatService.LockSeatsAsync(
-                    dto.ScheduleId,
-                    dto.SeatNumbers,
-                    userId,
-                    ip);
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _seatService.LockSeatsAsync(
+                dto.ScheduleId, dto.SeatNumbers, GetUserId(), GetIpAddress());
+            return Ok(result);
         }
-
 
         [Authorize(Roles = "Customer")]
         [HttpPost("seats/release")]
         public async Task<IActionResult> ReleaseSeats([FromBody] ReleaseSeatsRequestDto dto)
         {
-            try
-            {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-                if (userIdClaim == null)
-                {
-                    return Unauthorized(new ApiResponse<string>
-                    {
-                        Success = false,
-                        Message = "Invalid token. UserId claim missing.",
-                        Data = null
-                    });
-                }
-
-                int userId = int.Parse(userIdClaim.Value);
-                string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "";
-
-                var result = await _seatService.ReleaseSeatsAsync(
-                    dto.ScheduleId,
-                    dto.SeatNumbers,
-                    userId,
-                    ip);
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _seatService.ReleaseSeatsAsync(
+                dto.ScheduleId, dto.SeatNumbers, GetUserId(), GetIpAddress());
+            return Ok(result);
         }
 
         #endregion
 
-        #region Booking Endpoints
+        #region Booking
 
         [Authorize(Roles = "Customer")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateBookingRequestDto dto)
         {
-            try
-            {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-
-                if (userIdClaim == null)
-                {
-                    return Unauthorized(new ApiResponse<string>
-                    {
-                        Success = false,
-                        Message = "Invalid token. UserId claim missing.",
-                        Data = null
-                    });
-                }
-
-                int userId = int.Parse(userIdClaim.Value);
-                string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "";
-
-                return Ok(await _bookingService
-                    .CreateBookingAsync(dto, userId, ip));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _bookingService.CreateBookingAsync(dto, GetUserId(), GetIpAddress());
+            return Ok(result);
         }
-
 
         [Authorize(Roles = "Customer")]
         [HttpPost("my-bookings")]
         public async Task<IActionResult> MyBookings([FromBody] PaginationRequest request)
         {
-            try
-            {
-                if (request.PageNumber < 1) request.PageNumber = 1;
-                if (request.PageSize < 1) request.PageSize = 10;
-
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-
-                if (userIdClaim == null)
-                {
-                    return Unauthorized(new ApiResponse<string>
-                    {
-                        Success = false,
-                        Message = "Invalid token. UserId claim missing.",
-                        Data = null
-                    });
-                }
-
-                int userId = int.Parse(userIdClaim.Value);
-
-                return Ok(await _bookingService
-                    .GetMyBookingsAsync(userId));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            if (request.PageNumber < 1) request.PageNumber = 1;
+            if (request.PageSize < 1) request.PageSize = 10;
+            var result = await _bookingService.GetMyBookingsAsync(GetUserId());
+            return Ok(result);
         }
 
         [Authorize(Roles = "Admin")]
         [HttpPost("get-all")]
         public async Task<IActionResult> AllBookings([FromBody] PaginationRequest request)
         {
-            try
+            if (request.PageNumber < 1) request.PageNumber = 1;
+            if (request.PageSize < 1) request.PageSize = 10;
+            var (items, totalCount) = await _bookingService
+                .GetAllBookingsAsync(request.PageNumber, request.PageSize);
+            return Ok(ApiResponse<object>.SuccessResponse("Bookings retrieved successfully", new
             {
-                if (request.PageNumber < 1) request.PageNumber = 1;
-                if (request.PageSize < 1) request.PageSize = 10;
-
-                var (items, totalCount) = await _bookingService.GetAllBookingsAsync(request.PageNumber, request.PageSize);
-
-                return Ok(ApiResponse<object>.SuccessResponse("Bookings retrieved successfully", new
-                {
-                    items,
-                    totalCount,
-                    pageNumber = request.PageNumber,
-                    pageSize = request.PageSize
-                }));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ApiResponse<string>.FailureResponse(ex.Message));
-            }
+                items,
+                totalCount,
+                pageNumber = request.PageNumber,
+                pageSize = request.PageSize
+            }));
         }
 
         [Authorize(Roles = "Admin,Customer")]
         [HttpPost("{id}")]
         public async Task<IActionResult> GetBookingById(int id)
         {
-            try
-            {
-                return Ok(await _bookingService
-                    .GetBookingByIdAsync(id));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _bookingService.GetBookingByIdAsync(id);
+            return Ok(result);
         }
 
         [Authorize(Roles = "Admin,Customer")]
         [HttpPut("cancel/{id}")]
         public async Task<IActionResult> Cancel(int id)
         {
-            try
-            {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-
-                if (userIdClaim == null)
-                {
-                    return Unauthorized(new ApiResponse<string>
-                    {
-                        Success = false,
-                        Message = "Invalid token. UserId claim missing.",
-                        Data = null
-                    });
-                }
-
-                int userId = int.Parse(userIdClaim.Value);
-
-                string role = User.FindFirst(ClaimTypes.Role)?.Value ?? "Customer";
-                string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "";
-
-                return Ok(await _bookingService
-                    .CancelBookingAsync(id, userId, role, ip));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "Customer";
+            var result = await _bookingService.CancelBookingAsync(id, GetUserId(), role, GetIpAddress());
+            return Ok(result);
         }
 
         #endregion
 
-        #region Payment Endpoints
+        #region Payment
 
         [Authorize(Roles = "Customer")]
         [HttpPost("payment/initiate")]
         public async Task<IActionResult> InitiatePayment([FromBody] InitiatePaymentRequestDto dto)
         {
-            try
-            {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-                if (userIdClaim == null)
-                {
-                    return Unauthorized(new ApiResponse<string>
-                    {
-                        Success = false,
-                        Message = "Invalid token. UserId claim missing.",
-                        Data = null
-                    });
-                }
-
-                int userId = int.Parse(userIdClaim.Value);
-                string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "";
-
-                var result = await _paymentService.InitiatePaymentAsync(
-                    dto.BookingId,
-                    dto.Amount,
-                    dto.PaymentMethod,
-                    userId,
-                    ip);
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _paymentService.InitiatePaymentAsync(
+                dto.BookingId, dto.Amount, dto.PaymentMethod, GetUserId(), GetIpAddress());
+            return Ok(result);
         }
 
         [Authorize(Roles = "Customer")]
         [HttpPost("payment/confirm")]
         public async Task<IActionResult> ConfirmPayment([FromBody] ConfirmPaymentRequestDto dto)
         {
-            try
-            {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-                if (userIdClaim == null)
-                {
-                    return Unauthorized(new ApiResponse<string>
-                    {
-                        Success = false,
-                        Message = "Invalid token. UserId claim missing.",
-                        Data = null
-                    });
-                }
-
-                int userId = int.Parse(userIdClaim.Value);
-                string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "";
-
-                var result = await _paymentService.ConfirmPaymentAsync(dto, userId, ip);
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _paymentService.ConfirmPaymentAsync(dto, GetUserId(), GetIpAddress());
+            return Ok(result);
         }
 
         [Authorize(Roles = "Customer,Admin")]
         [HttpGet("payment/{paymentId}")]
         public async Task<IActionResult> GetPayment(int paymentId)
         {
-            try
-            {
-                var result = await _paymentService.GetPaymentAsync(paymentId);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _paymentService.GetPaymentAsync(paymentId);
+            return Ok(result);
         }
 
         #endregion
+
+        #region Rating
 
         [Authorize(Roles = "Customer")]
         [HttpPost("{bookingId}/rate")]
         public async Task<IActionResult> RateBus(int bookingId, [FromBody] RateBusRequestDto dto)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null)
-                return Unauthorized();
-
-            int userId = int.Parse(userIdClaim.Value);
-
-            // Validate booking belongs to user and is Confirmed
             var booking = await _bookingService.GetBookingByIdAsync(bookingId);
             if (booking?.Data == null)
-                return NotFound();
+                return NotFound(ApiResponse<string>.FailureResponse("Booking not found."));
 
             if (booking.Data.BookingStatus != "Confirmed")
                 return BadRequest(ApiResponse<string>.FailureResponse("You can only rate a confirmed booking."));
 
-            // Update bus rating
             await _busService.RateBusAsync(
-                booking.Data.BusId, userId, dto.Rating, ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString() ?? "");
+                booking.Data.BusId, GetUserId(), dto.Rating, GetIpAddress());
 
             return Ok(ApiResponse<string>.SuccessResponse("Rating submitted. Thank you!"));
         }
 
-        #region Passenger Endpoints
+        #endregion
+
+        #region Passengers
 
         [Authorize(Roles = "Customer")]
         [HttpPost("passengers")]
         public async Task<IActionResult> AddPassengers([FromBody] AddPassengerRequestDto dto)
         {
-            try
-            {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-                if (userIdClaim == null)
-                {
-                    return Unauthorized(new ApiResponse<string>
-                    {
-                        Success = false,
-                        Message = "Invalid token. UserId claim missing.",
-                        Data = null
-                    });
-                }
-
-                int userId = int.Parse(userIdClaim.Value);
-                string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "";
-
-                var result = await _passengerService.AddPassengersAsync(dto, userId, ip);
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _passengerService.AddPassengersAsync(dto, GetUserId(), GetIpAddress());
+            return Ok(result);
         }
-
 
         [Authorize(Roles = "Customer,Admin")]
         [HttpGet("{bookingId}/passengers")]
         public async Task<IActionResult> GetPassengers(int bookingId)
         {
-            try
-            {
-                var result = await _passengerService.GetBookingPassengersAsync(bookingId);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _passengerService.GetBookingPassengersAsync(bookingId);
+            return Ok(result);
         }
 
         #endregion
 
-        #region Refund Endpoints
+        #region Refund
 
         [Authorize(Roles = "Admin")]
         [HttpPost("refund/confirm")]
         public async Task<IActionResult> ConfirmRefund([FromBody] ConfirmRefundRequestDto dto)
         {
-            try
-            {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-                if (userIdClaim == null)
-                {
-                    return Unauthorized(new ApiResponse<string>
-                    {
-                        Success = false,
-                        Message = "Invalid token. UserId claim missing.",
-                        Data = null
-                    });
-                }
-
-                int userId = int.Parse(userIdClaim.Value);
-                string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "";
-
-                var result = await _paymentService.ConfirmRefundAsync(dto, userId, ip);
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _paymentService.ConfirmRefundAsync(dto, GetUserId(), GetIpAddress());
+            return Ok(result);
         }
-
 
         [Authorize(Roles = "Customer,Admin")]
         [HttpGet("refund/{refundId}")]
         public async Task<IActionResult> GetRefund(int refundId)
         {
-            try
-            {
-                var result = await _paymentService.GetRefundAsync(refundId);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Data = null
-                });
-            }
+            var result = await _paymentService.GetRefundAsync(refundId);
+            return Ok(result);
         }
 
         #endregion
+
+        private int GetUserId() =>
+            int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int id) ? id : 0;
+
+        private string GetIpAddress() =>
+            HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
     }
 }

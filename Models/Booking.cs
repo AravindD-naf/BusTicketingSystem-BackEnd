@@ -42,7 +42,10 @@ namespace BusTicketingSystem.Models
         [MaxLength(500)]
         public string CancellationReason { get; set; } = string.Empty;
 
-   
+        [MaxLength(20)]
+        public string CancelledBy { get; set; } = string.Empty;
+
+
         public bool IsDeleted { get; set; } = false;
 
         // Navigation properties

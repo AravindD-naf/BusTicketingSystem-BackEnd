@@ -83,10 +83,9 @@ namespace BusTicketingSystem.Services
 
             foreach (var booking in expiredBookings)
             {
-                booking.BookingStatus = BookingStatus.Cancelled;
+                booking.BookingStatus = BookingStatus.Expired;
                 booking.LastStatusChangeAt = now;
-                booking.CancellationReason =
-                    "Booking expired — payment not completed within allowed time.";
+                booking.CancellationReason = string.Empty;
 
                 await _bookingRepository.UpdateAsync(booking);
 
@@ -124,15 +123,15 @@ namespace BusTicketingSystem.Services
             string ipAddress)
         {
             if (seatNumbers == null || seatNumbers.Count == 0)
-                throw new Exception("At least one seat must be selected.");
+                throw new ValidationException("At least one seat must be selected.", "VAL_SEAT_SELECTION");
 
             var schedule = await _scheduleRepository.GetByIdAsync(scheduleId);
             if (schedule == null || schedule.IsDeleted || !schedule.IsActive)
-                throw new Exception("Invalid schedule.");
+                throw new ResourceNotFoundException("Schedule", scheduleId.ToString());
 
             DateTime departureDateTime = schedule.TravelDate.Add(schedule.DepartureTime);
             if (departureDateTime <= DateTime.UtcNow)
-                throw new Exception("Cannot lock seats after departure time.");
+                throw new BookingOperationException("Cannot lock seats after the departure time.", BookingOperationException.BookingErrorType.BookingExpired);
 
             var response = new LockSeatsResponseDto
             {
@@ -235,7 +234,7 @@ namespace BusTicketingSystem.Services
             string ipAddress)
         {
             if (seatNumbers == null || seatNumbers.Count == 0)
-                throw new Exception("At least one seat must be specified.");
+                throw new ValidationException("At least one seat must be specified.", "VAL_SEAT_SELECTION");
 
             var response = new ReleaseSeatsResponseDto
             {
@@ -318,7 +317,7 @@ namespace BusTicketingSystem.Services
             int userId)
         {
             if (seatNumbers == null || seatNumbers.Count == 0)
-                throw new Exception("At least one seat must be confirmed.");
+                throw new ValidationException("At least one seat must be confirmed.", "VAL_SEAT_CONFIRM");
 
             try
             {
@@ -329,13 +328,13 @@ namespace BusTicketingSystem.Services
                     var seat = seats.FirstOrDefault(s => s.SeatNumber == seatNumber);
 
                     if (seat == null)
-                        throw new Exception($"Seat {seatNumber} not found.");
+                        throw new SeatOperationException($"Seat {seatNumber} not found.", SeatOperationException.SeatErrorType.InvalidSeatNumber);
 
                     if (seat.SeatStatus != "Locked")
-                        throw new Exception($"Seat {seatNumber} is not locked.");
+                        throw new SeatOperationException($"Seat {seatNumber} is not locked.", SeatOperationException.SeatErrorType.SeatNotLocked);
 
                     if (seat.LockedByUserId != userId)
-                        throw new Exception($"Seat {seatNumber} is not locked by you.");
+                        throw new SeatOperationException($"Seat {seatNumber} is locked by another user.", SeatOperationException.SeatErrorType.SeatNotAvailable);
 
                     seat.SeatStatus = "Booked";
                     seat.BookingId = bookingId;
@@ -360,7 +359,7 @@ namespace BusTicketingSystem.Services
             List<string> seatNumbers)
         {
             if (seatNumbers == null || seatNumbers.Count == 0)
-                throw new Exception("At least one seat must be specified.");
+                throw new ValidationException("At least one seat must be specified.", "VAL_SEAT_SELECTION");
 
             try
             {
@@ -371,10 +370,10 @@ namespace BusTicketingSystem.Services
                     var seat = seats.FirstOrDefault(s => s.SeatNumber == seatNumber);
 
                     if (seat == null)
-                        throw new Exception($"Seat {seatNumber} not found.");
+                        throw new SeatOperationException($"Seat {seatNumber} not found.", SeatOperationException.SeatErrorType.InvalidSeatNumber);
 
                     if (seat.SeatStatus != "Booked")
-                        throw new Exception($"Seat {seatNumber} is not booked.");
+                        throw new SeatOperationException($"Seat {seatNumber} is not booked.", SeatOperationException.SeatErrorType.SeatNotAvailable);
 
                     seat.SeatStatus = "Available";
                     seat.BookingId = null;

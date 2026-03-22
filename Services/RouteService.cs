@@ -86,7 +86,7 @@ namespace BusTicketingSystem.Services
         public async Task<ApiResponse<string>> DeleteRouteAsync(int id, int userId, string ipAddress)
         {
             var route = await _routeRepository.GetByIdAsync(id)
-                ?? throw new Exception("Route not found.");
+                ?? throw new ResourceNotFoundException("Route", id.ToString());
 
             var oldValues = JsonSerializer.Serialize(route);
 
@@ -122,7 +122,7 @@ namespace BusTicketingSystem.Services
         public async Task<ApiResponse<RouteResponseDto>> GetRouteByIdAsync(int id)
         {
             var route = await _routeRepository.GetByIdAsync(id)
-                ?? throw new Exception("Route not found.");
+                ?? throw new ResourceNotFoundException("Route", id.ToString());
 
             return ApiResponse<RouteResponseDto>.SuccessResponse(MapToDto(route));
         }
@@ -206,7 +206,7 @@ namespace BusTicketingSystem.Services
     int pageSize)
         {
             if (string.IsNullOrWhiteSpace(source) && string.IsNullOrWhiteSpace(destination))
-                throw new Exception("At least one search parameter must be provided.");
+                throw new ValidationException("At least one search parameter (source or destination) must be provided.", "VAL_SEARCH_PARAMS");
 
             var (routes, totalCount) = await _routeRepository
                 .SearchAsync(source, destination, pageNumber, pageSize);

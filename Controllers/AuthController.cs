@@ -23,7 +23,6 @@ namespace BusTicketingSystem.Controllers
         public async Task<IActionResult> Register(RegisterRequest request)
         {
             var result = await _authService.RegisterAsync(request);
-
             return Ok(ApiResponse<object>.SuccessResponse("Registration successful", result));
         }
 
@@ -32,7 +31,6 @@ namespace BusTicketingSystem.Controllers
         public async Task<IActionResult> Login(LoginRequest request)
         {
             var result = await _authService.LoginAsync(request);
-
             return Ok(ApiResponse<object>.SuccessResponse("Login successful", result));
         }
     }

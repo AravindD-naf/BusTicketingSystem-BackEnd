@@ -79,7 +79,7 @@ namespace BusTicketingSystem.Services
                             SeatOperationException.SeatErrorType.SeatNotAvailable);
                 }
 
-                decimal seatPrice = schedule.Route?.BaseFare ?? 500;
+                decimal seatPrice = schedule.Fare > 0? schedule.Fare : (schedule.Route?.BaseFare ?? 500);
                 decimal totalAmount = dto.SeatNumbers.Count * seatPrice;
 
                 var booking = new Booking
@@ -140,9 +140,9 @@ namespace BusTicketingSystem.Services
             foreach (var booking in expiredBookings)
             {
                 // Cancel the booking
-                booking.BookingStatus = BookingStatus.Cancelled;
+                booking.BookingStatus = BookingStatus.Expired;
                 booking.LastStatusChangeAt = now;
-                booking.CancellationReason = "Booking expired — payment not completed within 5 minutes.";
+                booking.CancellationReason = string.Empty;
 
                 await _bookingRepository.UpdateAsync(booking);
 
@@ -216,7 +216,9 @@ namespace BusTicketingSystem.Services
                 TotalAmount = booking.TotalAmount,
                 BookingStatus = booking.BookingStatus.ToString(),
                 BookingDate = booking.BookingDate,
-                
+                CancellationReason = booking.CancellationReason ?? string.Empty,
+                CancelledBy = booking.CancelledBy ?? string.Empty,
+
                 RouteId = schedule.Route.RouteId,
                 Source = schedule.Route.Source,
                 Destination = schedule.Route.Destination,
@@ -248,23 +250,26 @@ namespace BusTicketingSystem.Services
             var booking = await _bookingRepository.GetByIdAsync(bookingId);
 
             if (booking == null || booking.IsDeleted)
-                throw new Exception("Booking not found.");
+                throw new ResourceNotFoundException("Booking", bookingId.ToString());
 
-            if (role == "User" && booking.UserId != userId)
-                throw new Exception("Unauthorized access.");
+            if (role == "Customer" && booking.UserId != userId)
+                throw new BookingOperationException("You are not authorized to cancel this booking.", BookingOperationException.BookingErrorType.InvalidBooking);
 
             if (booking.BookingStatus == BookingStatus.Cancelled)
-                throw new Exception("Booking already cancelled.");
+                throw new BookingOperationException("Booking is already cancelled.", BookingOperationException.BookingErrorType.InvalidBookingStatus);
+
+            if (booking.BookingStatus == BookingStatus.Expired)
+                throw new BookingOperationException("This booking has expired and cannot be cancelled.", BookingOperationException.BookingErrorType.BookingExpired);
 
             var schedule = await _scheduleRepository.GetByIdAsync(booking.ScheduleId);
 
             if (schedule == null)
-                throw new Exception("Schedule not found.");
+                throw new ResourceNotFoundException("Schedule", booking.ScheduleId.ToString());
 
             DateTime departureDateTime = schedule.TravelDate.Add(schedule.DepartureTime);
 
             if (departureDateTime <= DateTime.UtcNow)
-                throw new Exception("Cannot cancel after departure.");
+                throw new BookingOperationException("Cannot cancel a booking after the departure time.", BookingOperationException.BookingErrorType.BookingExpired);
 
             using (var transaction = await _scheduleRepository.BeginTransactionAsync())
             {
@@ -302,6 +307,7 @@ namespace BusTicketingSystem.Services
 
                     booking.BookingStatus = BookingStatus.Cancelled;
                     booking.LastStatusChangeAt = DateTime.UtcNow;
+                    booking.CancelledBy = role;
 
                     await _scheduleRepository.UpdateAsync(schedule);
                     await _bookingRepository.UpdateAsync(booking);
@@ -338,7 +344,8 @@ namespace BusTicketingSystem.Services
                 TotalAmount = b.TotalAmount,
                 BookingStatus = b.BookingStatus.ToString(),
                 BookingDate = b.BookingDate,
-                CancellationReason = b.CancellationReason ?? string.Empty
+                CancellationReason = b.CancellationReason ?? string.Empty,
+                CancelledBy = b.CancelledBy ?? string.Empty
             };
         }
     }

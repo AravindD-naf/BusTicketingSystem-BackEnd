@@ -6,14 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Repositories
 {
-    public class BusRepository : IBusRepository
+    public class BusRepository : Repository<Bus>, IBusRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public BusRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        public BusRepository(ApplicationDbContext context) : base(context) { }
 
         public async Task<Bus> CreateAsync(Bus bus)
         {

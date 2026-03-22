@@ -5,11 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Repositories
 {
-    public class PaymentRepository : IPaymentRepository
+    public class PaymentRepository : Repository<Payment>, IPaymentRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public PaymentRepository(ApplicationDbContext context) => _context = context;
+        public PaymentRepository(ApplicationDbContext context) : base(context) { }
 
         public async Task AddAsync(Payment payment) => await _context.Payments.AddAsync(payment);
 
@@ -39,11 +37,9 @@ namespace BusTicketingSystem.Repositories
         public async Task SaveChangesAsync() => await _context.SaveChangesAsync();
     }
 
-    public class RefundRepository : IRefundRepository
+    public class RefundRepository : Repository<Refund>, IRefundRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public RefundRepository(ApplicationDbContext context) => _context = context;
+        public RefundRepository(ApplicationDbContext context) : base(context) { }
 
         public async Task AddAsync(Refund refund) => await _context.Refunds.AddAsync(refund);
 
@@ -65,11 +61,9 @@ namespace BusTicketingSystem.Repositories
         public async Task SaveChangesAsync() => await _context.SaveChangesAsync();
     }
 
-    public class PassengerRepository : IPassengerRepository
+    public class PassengerRepository : Repository<Passenger>, IPassengerRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public PassengerRepository(ApplicationDbContext context) => _context = context;
+        public PassengerRepository(ApplicationDbContext context) : base(context) { }
 
         public async Task AddAsync(Passenger passenger) => await _context.Passengers.AddAsync(passenger);
 
@@ -103,11 +97,9 @@ namespace BusTicketingSystem.Repositories
         public async Task SaveChangesAsync() => await _context.SaveChangesAsync();
     }
 
-    public class CancellationPolicyRepository : ICancellationPolicyRepository
+    public class CancellationPolicyRepository : Repository<CancellationPolicy>, ICancellationPolicyRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public CancellationPolicyRepository(ApplicationDbContext context) => _context = context;
+        public CancellationPolicyRepository(ApplicationDbContext context) : base(context) { }
 
         public async Task<List<CancellationPolicy>> GetAllActiveAsync() =>
             await _context.CancellationPolicies

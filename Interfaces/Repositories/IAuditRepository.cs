@@ -2,9 +2,8 @@
 
 namespace BusTicketingSystem.Interfaces.Repositories
 {
-    public interface IAuditRepository
+    public interface IAuditRepository : IRepository<AuditLog>
     {
-        Task AddAsync(AuditLog log);
         Task<Dictionary<int, string>> GetUserEmailsAsync(List<int> userIds);
 
 
@@ -15,8 +14,6 @@ namespace BusTicketingSystem.Interfaces.Repositories
             int? userId,
             DateTime? fromDate,
             DateTime? toDate);
-
-        Task SaveChangesAsync();
 
         Task LogAuditAsync(
             string action,

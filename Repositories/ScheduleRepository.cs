@@ -6,14 +6,9 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace BusTicketingSystem.Repositories
 {
-    public class ScheduleRepository : IScheduleRepository
+    public class ScheduleRepository : Repository<Schedule>, IScheduleRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public ScheduleRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        public ScheduleRepository(ApplicationDbContext context) : base(context) { }
 
         public async Task AddAsync(Schedule schedule)
         {
@@ -89,28 +84,30 @@ namespace BusTicketingSystem.Repositories
 
         public async Task<List<Schedule>> GetByFromCityAsync(string fromCity)
         {
+            var from = fromCity.Trim().ToLower();
             return await _context.Schedules
                 .Include(s => s.Route)
                 .Include(s => s.Bus)
                 .Where(s =>
-                    s.Route.Source == fromCity &&
+                    s.Route.Source.ToLower().Trim() == from &&
                     s.IsActive &&
                     !s.IsDeleted)
-                .OrderBy(s => s.TravelDate)
+                        .OrderBy(s => s.TravelDate)
                 .ThenBy(s => s.DepartureTime)
                 .ToListAsync();
         }
 
         public async Task<List<Schedule>> GetByToCityAsync(string toCity)
         {
+            var to = toCity.Trim().ToLower();
             return await _context.Schedules
                 .Include(s => s.Route)
                 .Include(s => s.Bus)
                 .Where(s =>
-                    s.Route.Destination == toCity &&
+                    s.Route.Destination.ToLower().Trim() == to &&
                     s.IsActive &&
                     !s.IsDeleted)
-                .OrderBy(s => s.TravelDate)
+                        .OrderBy(s => s.TravelDate)
                 .ThenBy(s => s.DepartureTime)
                 .ToListAsync();
         }
@@ -120,15 +117,17 @@ namespace BusTicketingSystem.Repositories
             string toCity,
             DateTime travelDate)
         {
-            travelDate = travelDate.Date;
+            var from = fromCity.Trim().ToLower();
+            var to = toCity.Trim().ToLower();
+            var date = travelDate.Date;
 
             return await _context.Schedules
                 .Include(s => s.Route)
                 .Include(s => s.Bus)
                 .Where(s =>
-                    s.Route.Source == fromCity &&
-                    s.Route.Destination == toCity &&
-                    s.TravelDate == travelDate &&
+                    s.Route.Source.ToLower().Trim() == from &&
+                    s.Route.Destination.ToLower().Trim() == to &&
+                    s.TravelDate.Date == date &&
                     s.IsActive &&
                     !s.IsDeleted &&
                     s.AvailableSeats > 0)

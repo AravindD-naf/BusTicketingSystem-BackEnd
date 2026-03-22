@@ -1,6 +1,7 @@
 using BusTicketingSystem.DTOs.Requests;
 using BusTicketingSystem.DTOs.Responses;
 using BusTicketingSystem.Exceptions;
+using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Models;
 using BusTicketingSystem.Repositories;
 

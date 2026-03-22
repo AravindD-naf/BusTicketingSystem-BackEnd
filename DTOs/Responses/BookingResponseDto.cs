@@ -9,6 +9,7 @@
         public string BookingStatus { get; set; } = string.Empty;
         public DateTime BookingDate { get; set; }
         public string CancellationReason { get; set; } = string.Empty;
+        public string CancelledBy { get; set; } = string.Empty;
     }
 
     public class BookingDetailResponseDto
@@ -19,6 +20,8 @@
         public decimal TotalAmount { get; set; }
         public string BookingStatus { get; set; } = string.Empty;
         public DateTime BookingDate { get; set; }
+        public string CancellationReason { get; set; } = string.Empty;
+        public string CancelledBy { get; set; } = string.Empty;
 
         // Route Details
         public int RouteId { get; set; }

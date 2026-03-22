@@ -5,20 +5,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Repositories
 {
-    public class SeatRepository : ISeatRepository
+    public class SeatRepository : Repository<Seat>, ISeatRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public SeatRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        public SeatRepository(ApplicationDbContext context) : base(context) { }
 
         public async Task<List<Seat>> GetSeatsByScheduleIdAsync(int scheduleId)
         {
             return await _context.Seats
                 .Where(s => s.ScheduleId == scheduleId && !s.IsDeleted)
-                .OrderBy(s => s.SeatNumber)
+                .OrderBy(s => s.SeatNumber.Substring(0, 1))   // row letter: A, B, C...
+                .ThenBy(s => s.SeatNumber.Length)              // length first so A1 < A10
+                .ThenBy(s => s.SeatNumber)                     // then lexicographic within same length
                 .ToListAsync();
         }
 

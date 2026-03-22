@@ -6,14 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Repositories
 {
-    public class BookingRepository : IBookingRepository
+    public class BookingRepository : Repository<Booking>, IBookingRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public BookingRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        public BookingRepository(ApplicationDbContext context) : base(context) { }
 
         public async Task AddAsync(Booking booking)
         {
@@ -28,12 +23,13 @@ namespace BusTicketingSystem.Repositories
 
         public async Task<List<Booking>> GetExpiredPendingBookingsAsync()
         {
-            var cutoff = DateTime.UtcNow.AddMinutes(5);
+            // A booking is expired if it has been Pending for more than 5 minutes
+            var expiryCutoff = DateTime.UtcNow.AddMinutes(-5);
 
             return await _context.Bookings
                 .Where(b =>
                     b.BookingStatus == BookingStatus.Pending &&
-                    b.BookingDate <= cutoff &&
+                    b.BookingDate <= expiryCutoff &&
                     !b.IsDeleted)
                 .ToListAsync();
         }

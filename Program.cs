@@ -45,6 +45,9 @@ builder.Services.AddScoped<DestinationService>();
 
 builder.Services.AddScoped<IErrorLogService, ErrorLogService>();
 
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 

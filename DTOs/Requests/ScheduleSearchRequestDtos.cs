@@ -9,6 +9,15 @@ namespace BusTicketingSystem.DTOs.Requests
     {
         public string FromCity { get; set; } = string.Empty;
         public string ToCity { get; set; } = string.Empty;
-        public DateTime TravelDate { get; set; }
+
+        // Stored as string to avoid timezone conversion issues.
+        // The frontend sends "YYYY-MM-DD". We parse it as UTC date only.
+        public string TravelDate { get; set; } = string.Empty;
+
+        // Parsed as UTC date — safe to compare against DB TravelDate
+        public DateTime TravelDateUtc =>
+            DateTime.TryParse(TravelDate, out var d)
+                ? DateTime.SpecifyKind(d.Date, DateTimeKind.Utc)
+                : DateTime.UtcNow.Date;
     }
 }

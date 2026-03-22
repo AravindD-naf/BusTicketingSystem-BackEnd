@@ -6,14 +6,9 @@ using System.Text.Json;
 
 namespace BusTicketingSystem.Repositories
 {
-    public class AuditRepository : IAuditRepository
+    public class AuditRepository : Repository<AuditLog>, IAuditRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public AuditRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        public AuditRepository(ApplicationDbContext context) : base(context) { }
 
         public async Task AddAsync(AuditLog log)
         {
