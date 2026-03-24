@@ -19,5 +19,16 @@ namespace BusTicketingSystem.DTOs.Requests
             DateTime.TryParse(TravelDate, out var d)
                 ? DateTime.SpecifyKind(d.Date, DateTimeKind.Utc)
                 : DateTime.UtcNow.Date;
+
+        // ADD these properties to the existing ScheduleSearchRequest class:
+        public List<string>? BusTypes { get; set; }
+        public decimal? MaxPrice { get; set; }
+        public List<string>? DepartureTimes { get; set; }  // "morning","afternoon","evening","night"
+        public List<string>? Operators { get; set; }
+        public double? MinRating { get; set; }
+        public string? SortBy { get; set; }  // "departure","arrival","price_asc","price_desc","duration","rating"
+        public int PageNumber { get; set; } = 1;
+        public int PageSize { get; set; } = 20;
+
     }
 }

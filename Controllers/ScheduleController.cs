@@ -81,8 +81,9 @@ namespace BusTicketingSystem.Controllers
         [HttpPost("search")]
         public async Task<IActionResult> Search([FromBody] ScheduleSearchRequest request)
         {
-            var response = await _scheduleService.SearchSchedulesAsync(
-                request.FromCity, request.ToCity, request.TravelDateUtc);
+            if (request.PageNumber < 1) request.PageNumber = 1;
+            if (request.PageSize < 1) request.PageSize = 20;
+            var response = await _scheduleService.SearchSchedulesAsync(request);
             return Ok(response);
         }
 

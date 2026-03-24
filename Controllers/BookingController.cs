@@ -46,12 +46,14 @@ namespace BusTicketingSystem.Controllers
             return Ok(result);
         }
 
+
         [AllowAnonymous]
         [HttpPost("schedules/search")]
         public async Task<IActionResult> SearchSchedules([FromBody] ScheduleSearchRequest request)
         {
-            var result = await _scheduleService
-                .SearchSchedulesAsync(request.FromCity, request.ToCity, request.TravelDateUtc);
+            if (request.PageNumber < 1) request.PageNumber = 1;
+            if (request.PageSize < 1) request.PageSize = 20;
+            var result = await _scheduleService.SearchSchedulesAsync(request);
             return Ok(result);
         }
 

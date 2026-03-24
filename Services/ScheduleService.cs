@@ -1,5 +1,6 @@
 ﻿using BusTicketingSystem.Common.Responses;
 using BusTicketingSystem.DTOs;
+using BusTicketingSystem.DTOs.Requests;
 using BusTicketingSystem.Exceptions;
 using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Interfaces.Services;
@@ -378,21 +379,27 @@ namespace BusTicketingSystem.Services
             await _scheduleRepository.SaveChangesAsync();
         }
 
-        public async Task<ApiResponse<List<ScheduleResponseDto>>>
-            SearchSchedulesAsync(
-                string fromCity,
-                string toCity,
-                DateTime travelDate)
+        // REPLACE the existing SearchSchedulesAsync method with:
+        public async Task<ApiResponse<PagedResponse<ScheduleResponseDto>>> SearchSchedulesAsync(ScheduleSearchRequest request)
         {
-            var schedules = await _scheduleRepository
-                .SearchSchedulesAsync(fromCity, toCity, travelDate.Date);
+            var (schedules, totalCount) = await _scheduleRepository.SearchSchedulesAsync(request);
 
-            // Sync stale AvailableSeats counter before returning to user
+            // Sync stale AvailableSeats counter before returning
             await SyncAvailableSeatsAsync(schedules);
 
-            return ApiResponse<List<ScheduleResponseDto>>
-                .SuccessResponse(schedules.Select(MapToDto).ToList());
+            var mapped = schedules.Select(MapToDto).ToList();
+
+            var paged = new PagedResponse<ScheduleResponseDto>
+            {
+                Items = mapped,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+
+            return ApiResponse<PagedResponse<ScheduleResponseDto>>.SuccessResponse(paged);
         }
+
 
         private ScheduleResponseDto MapToDto(Schedule s)
         {

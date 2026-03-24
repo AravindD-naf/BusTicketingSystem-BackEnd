@@ -1,5 +1,6 @@
 ﻿using BusTicketingSystem.Common.Responses;
 using BusTicketingSystem.DTOs;
+using BusTicketingSystem.DTOs.Requests;
 
 namespace BusTicketingSystem.Interfaces.Services
 {
@@ -32,11 +33,8 @@ namespace BusTicketingSystem.Interfaces.Services
         Task<ApiResponse<List<ScheduleResponseDto>>>
             GetByToCityAsync(string toCity);
 
-        // 3️⃣ Get by From + To + Travel Date (Most Important for Users)
-        Task<ApiResponse<List<ScheduleResponseDto>>>
-            SearchSchedulesAsync(
-                string fromCity,
-                string toCity,
-                DateTime travelDate);
+        Task<ApiResponse<PagedResponse<ScheduleResponseDto>>> SearchSchedulesAsync(ScheduleSearchRequest request);
+
+
     }
 }

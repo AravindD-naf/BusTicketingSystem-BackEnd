@@ -1,4 +1,5 @@
 ﻿using BusTicketingSystem.Data;
+using BusTicketingSystem.DTOs.Requests;
 using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Models;
 using Microsoft.EntityFrameworkCore;
@@ -121,28 +122,107 @@ namespace BusTicketingSystem.Repositories
                 .ToListAsync();
         }
 
-        public async Task<List<Schedule>> SearchSchedulesAsync(
-            string fromCity,
-            string toCity,
-            DateTime travelDate)
+        // REPLACE the existing SearchSchedulesAsync method with:
+        public async Task<(List<Schedule> items, int totalCount)> SearchSchedulesAsync(ScheduleSearchRequest request)
         {
-            var from = fromCity.Trim().ToLower();
-            var to = toCity.Trim().ToLower();
-            var date = travelDate.Date;
+            var from = request.FromCity.Trim().ToLower();
+            var to   = request.ToCity.Trim().ToLower();
+            var date = request.TravelDateUtc.Date;
 
-            return await _context.Schedules
+            var query = _context.Schedules
                 .Include(s => s.Route)
                 .Include(s => s.Bus)
                 .Where(s =>
                     s.Route.Source.ToLower().Trim() == from &&
                     s.Route.Destination.ToLower().Trim() == to &&
                     s.TravelDate.Date == date &&
-                    s.IsActive &&
-                    !s.IsDeleted &&
-                    s.AvailableSeats > 0)
-                .OrderBy(s => s.DepartureTime)
+                    s.IsActive && !s.IsDeleted && s.AvailableSeats > 0);
+
+            // ── Filters ──
+            if (request.BusTypes != null && request.BusTypes.Count > 0)
+                query = query.Where(s => request.BusTypes.Contains(s.Bus.BusType));
+
+            if (request.MaxPrice.HasValue)
+                query = query.Where(s =>
+                    (s.Fare > 0 ? s.Fare : s.Route.BaseFare) <= request.MaxPrice.Value);
+
+            if (request.Operators != null && request.Operators.Count > 0)
+                query = query.Where(s => request.Operators.Contains(s.Bus.OperatorName));
+
+            if (request.MinRating.HasValue && request.MinRating.Value > 0)
+                query = query.Where(s => s.Bus.RatingAverage >= request.MinRating.Value);
+
+            if (request.DepartureTimes != null && request.DepartureTimes.Count > 0)
+            {
+                // Convert time-of-day labels to minute ranges and filter in memory
+                // (EF can't translate custom time-range logic easily, so pull then filter)
+                var all = await query.ToListAsync();
+                all = all.Where(s => {
+                    var h = (int)s.DepartureTime.TotalHours % 24;
+                    return request.DepartureTimes.Any(t => t switch {
+                        "morning"   => h >= 6  && h < 12,
+                        "afternoon" => h >= 12 && h < 18,
+                        "evening"   => h >= 18 && h < 22,
+                        "night"     => h >= 22 || h < 6,
+                        _           => false
+                    });
+                }).ToList();
+
+                // Apply sort + pagination on the in-memory list
+                all = ApplySortInMemory(all, request.SortBy);
+                var totalInMem = all.Count;
+                var pagedInMem = all
+                    .Skip((request.PageNumber - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToList();
+                return (pagedInMem, totalInMem);
+            }
+
+            // ── Sort (DB-level) ──
+            IOrderedQueryable<Schedule> ordered = request.SortBy switch {
+                "price_asc"  => query.OrderBy(s => s.Fare > 0 ? s.Fare : s.Route.BaseFare),
+                "price_desc" => query.OrderByDescending(s => s.Fare > 0 ? s.Fare : s.Route.BaseFare),
+                "arrival"    => query.OrderBy(s => s.ArrivalTime),
+                "rating"     => query.OrderByDescending(s => s.Bus.RatingAverage),
+                _            => query.OrderBy(s => s.DepartureTime)  // default: departure
+            };
+            // duration sort is in-memory (needs computed field)
+            if (request.SortBy == "duration")
+            {
+                var allForDuration = await query.ToListAsync();
+                allForDuration = ApplySortInMemory(allForDuration, "duration");
+                var total2 = allForDuration.Count;
+                var paged2 = allForDuration
+                    .Skip((request.PageNumber - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToList();
+                return (paged2, total2);
+            }
+
+            var totalCount = await ordered.CountAsync();
+            var items = await ordered
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
                 .ToListAsync();
+
+            return (items, totalCount);
         }
+
+        // Helper for in-memory sorts
+        private List<Schedule> ApplySortInMemory(List<Schedule> list, string? sortBy) =>
+            sortBy switch {
+                "price_asc"  => list.OrderBy(s => s.Fare > 0 ? s.Fare : s.Route?.BaseFare ?? 0).ToList(),
+                "price_desc" => list.OrderByDescending(s => s.Fare > 0 ? s.Fare : s.Route?.BaseFare ?? 0).ToList(),
+                "arrival"    => list.OrderBy(s => s.ArrivalTime).ToList(),
+                "rating"     => list.OrderByDescending(s => s.Bus?.RatingAverage ?? 0).ToList(),
+                "duration"   => list.OrderBy(s => {
+                    var dep = (int)s.DepartureTime.TotalMinutes;
+                    var arr = (int)s.ArrivalTime.TotalMinutes;
+                    return s.IsOvernightArrival ? (1440 - dep) + arr : arr - dep;
+                }).ToList(),
+                _            => list.OrderBy(s => s.DepartureTime).ToList()
+            };
+
 
 
         public async Task<bool> HasOverlappingScheduleAsync(
