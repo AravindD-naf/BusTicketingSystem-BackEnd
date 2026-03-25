@@ -2,6 +2,7 @@
 using BusTicketingSystem.DTOs.Requests;
 using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Models;
+using BusTicketingSystem.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -23,6 +24,23 @@ namespace BusTicketingSystem.Repositories
                 .Include(s => s.Bus)
                 .FirstOrDefaultAsync(s => s.ScheduleId == id && !s.IsDeleted);
         }
+
+        public async Task<bool> HasFutureSchedulesForBusAsync(int busId)
+        {
+            return await _context.Schedules
+                .AnyAsync(s => s.BusId == busId &&
+                               !s.IsDeleted &&
+                               s.TravelDate.Date >= DateTime.UtcNow.Date);
+        }
+
+        public async Task<bool> HasFutureSchedulesForRouteAsync(int routeId)
+        {
+            return await _context.Schedules
+                .AnyAsync(s => s.RouteId == routeId &&
+                               !s.IsDeleted &&
+                               s.TravelDate.Date >= DateTime.UtcNow.Date);
+        }
+
 
         public async Task<(IEnumerable<Schedule>, int)>GetPagedAsync(int pageNumber, int pageSize, string? keyword = null)
         {
@@ -136,7 +154,11 @@ namespace BusTicketingSystem.Repositories
                     s.Route.Source.ToLower().Trim() == from &&
                     s.Route.Destination.ToLower().Trim() == to &&
                     s.TravelDate.Date == date &&
-                    s.IsActive && !s.IsDeleted && s.AvailableSeats > 0);
+                    s.IsActive &&
+                    !s.IsDeleted &&
+                    s.AvailableSeats > 0 &&
+                    (s.TravelDate.Date > DateTime.UtcNow.Date ||
+                     (s.TravelDate.Date == DateTime.UtcNow.Date && s.DepartureTime > DateTime.UtcNow.TimeOfDay)));
 
             // ── Filters ──
             if (request.BusTypes != null && request.BusTypes.Count > 0)
@@ -309,6 +331,53 @@ namespace BusTicketingSystem.Repositories
 
             return (items, totalCount);
         }
+
+        public async Task<bool> HasActiveBookingsForBusAsync(int busId)
+        {
+            return await _context.Schedules
+                .Where(s => s.BusId == busId && !s.IsDeleted && s.TravelDate.Date >= DateTime.UtcNow.Date)
+                .AnyAsync(s => _context.Bookings
+                    .Any(b => b.ScheduleId == s.ScheduleId &&
+                              !b.IsDeleted &&
+                              (b.BookingStatus == BookingStatus.Pending ||
+                               b.BookingStatus == BookingStatus.Confirmed)));
+        }
+
+        public async Task<bool> HasActiveBookingsForRouteAsync(int routeId)
+        {
+            return await _context.Schedules
+                .Where(s => s.RouteId == routeId && !s.IsDeleted && s.TravelDate.Date >= DateTime.UtcNow.Date)
+                .AnyAsync(s => _context.Bookings
+                    .Any(b => b.ScheduleId == s.ScheduleId &&
+                              !b.IsDeleted &&
+                              (b.BookingStatus == BookingStatus.Pending ||
+                               b.BookingStatus == BookingStatus.Confirmed)));
+        }
+
+        public async Task<int> MarkPastSchedulesInactiveAsync()
+        {
+            var now = DateTime.UtcNow;
+            var pastSchedules = await _context.Schedules
+                .Where(s =>
+                    s.IsActive &&
+                    !s.IsDeleted &&
+                    (s.TravelDate.Date < now.Date ||
+                     (s.TravelDate.Date == now.Date && s.DepartureTime < now.TimeOfDay)))
+                .ToListAsync();
+
+            if (pastSchedules.Count == 0) return 0;
+
+            foreach (var s in pastSchedules)
+            {
+                s.IsActive = false;
+                s.UpdatedAt = now;
+            }
+
+            await _context.SaveChangesAsync();
+            return pastSchedules.Count;
+        }
+
+
 
         public async Task<IDbContextTransaction> BeginTransactionAsync()
         {

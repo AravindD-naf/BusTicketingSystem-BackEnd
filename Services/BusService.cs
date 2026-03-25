@@ -15,13 +15,16 @@ namespace BusTicketingSystem.Services
         private readonly IBusRepository _busRepository;
         private readonly IAuditService _auditService;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IScheduleRepository _scheduleRepository;
+
 
         public BusService(IBusRepository busRepository, IAuditService auditService,
-    IHttpContextAccessor httpContextAccessor)
+    IHttpContextAccessor httpContextAccessor, IScheduleRepository scheduleRepository)
         {
             _busRepository = busRepository;
             _auditService = auditService;
             _httpContextAccessor = httpContextAccessor;
+            _scheduleRepository = scheduleRepository;
         }
 
         public async Task<BusResponse> CreateBusAsync(
@@ -93,6 +96,12 @@ namespace BusTicketingSystem.Services
             if (bus == null || bus.IsDeleted)
                 throw new NotFoundException("Bus not found.");
 
+            var hasSchedule = await _scheduleRepository.HasFutureSchedulesForBusAsync(id);
+            if (hasSchedule)
+                throw new ConflictException(
+                    "This bus has upcoming schedules and cannot be edited. " +
+                    "Please remove all future schedules before making changes.");
+
             var oldValues = new
             {
                 bus.BusNumber,
@@ -138,6 +147,18 @@ namespace BusTicketingSystem.Services
             var bus = await _busRepository.GetByIdAsync(id);
             if (bus == null)
                 throw new NotFoundException("Bus not found.");
+
+            var hasSchedule = await _scheduleRepository.HasFutureSchedulesForBusAsync(id);
+            if (hasSchedule)
+                throw new ConflictException(
+                    "This bus has upcoming schedules and cannot be deleted. " +
+                    "Please remove all future schedules before deleting.");
+
+
+            var hasActiveBookings = await _scheduleRepository.HasActiveBookingsForBusAsync(id);
+            if (hasActiveBookings)
+                throw new ConflictException(
+                    "This bus has upcoming schedules with active bookings. Please refund all booked seats before deleting.");
 
             bus.IsDeleted = true;
             bus.UpdatedAt = DateTime.UtcNow;

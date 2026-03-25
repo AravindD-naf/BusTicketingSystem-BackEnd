@@ -34,6 +34,8 @@ namespace BusTicketingSystem.Interfaces.Services
             GetByToCityAsync(string toCity);
 
         Task<ApiResponse<PagedResponse<ScheduleResponseDto>>> SearchSchedulesAsync(ScheduleSearchRequest request);
+        Task<int> MarkPastSchedulesInactiveAsync();
+
 
 
     }

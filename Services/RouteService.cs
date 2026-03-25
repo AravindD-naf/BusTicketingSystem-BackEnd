@@ -15,9 +15,12 @@ namespace BusTicketingSystem.Services
         private readonly IRouteRepository _routeRepository;
         private readonly IAuditRepository _auditRepository;
         private readonly JsonSerializerOptions _jsonOptions;
+        private readonly IScheduleRepository _scheduleRepository;
+
 
         public RouteService(IRouteRepository routeRepository,
-                            IAuditRepository auditRepository)
+                            IAuditRepository auditRepository,
+                            IScheduleRepository scheduleRepository)
         {
             _routeRepository = routeRepository;
             _auditRepository = auditRepository;
@@ -26,6 +29,8 @@ namespace BusTicketingSystem.Services
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
                 WriteIndented = false
             };
+            _scheduleRepository = scheduleRepository;
+
         }
 
         public async Task<ApiResponse<RouteResponseDto>> CreateRouteAsync(RouteCreateRequestDto request, int userId, string ipAddress)
@@ -60,6 +65,12 @@ namespace BusTicketingSystem.Services
             var route = await _routeRepository.GetByIdAsync(id)
                 ?? throw new ResourceNotFoundException("Route", id.ToString());
 
+            var hasSchedule = await _scheduleRepository.HasFutureSchedulesForRouteAsync(id);
+            if (hasSchedule)
+                throw new ConflictException(
+                    "This route has upcoming schedules and cannot be edited. " +
+                    "Please remove all future schedules before making changes.");
+
             var oldValues = JsonSerializer.Serialize(route);
 
             route.Source = request.Source.Trim();
@@ -88,7 +99,18 @@ namespace BusTicketingSystem.Services
             var route = await _routeRepository.GetByIdAsync(id)
                 ?? throw new ResourceNotFoundException("Route", id.ToString());
 
+            var hasSchedule = await _scheduleRepository.HasFutureSchedulesForRouteAsync(id);
+            if (hasSchedule)
+                throw new ConflictException(
+                    "This route has upcoming schedules and cannot be deleted. " +
+                    "Please remove all future schedules before deleting.");
+
+
             var oldValues = JsonSerializer.Serialize(route);
+            var hasActiveBookings = await _scheduleRepository.HasActiveBookingsForRouteAsync(id);
+            if (hasActiveBookings)
+                throw new ConflictException(
+                    "This route has upcoming schedules with active bookings. Please refund all booked seats before deleting.");
 
             route.IsDeleted = true;
             route.UpdatedAt = DateTime.UtcNow;

@@ -10,5 +10,7 @@ namespace BusTicketingSystem.Interfaces.Repositories
         Task<List<Booking>> GetByUserIdAsync(int userId);
         Task<List<Booking>> GetExpiredPendingBookingsAsync();
         Task UpdateAsync(Booking booking);
+        Task<List<Booking>> GetByUserIdWithRefundAsync(int userId);
+
     }
 }

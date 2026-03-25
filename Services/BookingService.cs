@@ -181,8 +181,9 @@ namespace BusTicketingSystem.Services
         {
             // Trigger cleanup so My Bookings page always shows updated statuses
             await CleanupExpiredBookingsAsync();
+            await _scheduleRepository.MarkPastSchedulesInactiveAsync();
 
-            var bookings = await _bookingRepository.GetByUserIdAsync(userId);
+            var bookings = await _bookingRepository.GetByUserIdWithRefundAsync(userId);
 
             return ApiResponse<List<BookingResponseDto>>
                 .SuccessResponse(bookings.Select(MapToDto).ToList());
@@ -362,7 +363,16 @@ namespace BusTicketingSystem.Services
                 BookingStatus = b.BookingStatus.ToString(),
                 BookingDate = b.BookingDate,
                 CancellationReason = b.CancellationReason ?? string.Empty,
-                CancelledBy = b.CancelledBy ?? string.Empty
+                CancelledBy = b.CancelledBy ?? string.Empty,
+                Refund = b.Refund == null ? null : new BookingRefundDto
+                {
+                    RefundId = b.Refund.RefundId,
+                    RefundAmount = b.Refund.RefundAmount,
+                    CancellationFee = b.Refund.CancellationFee,
+                    RefundPercentage = b.Refund.RefundPercentage,
+                    Status = b.Refund.Status.ToString(),
+                    ProcessedAt = b.Refund.ProcessedAt
+                }
             };
         }
     }

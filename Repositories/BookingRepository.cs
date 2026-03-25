@@ -36,11 +36,15 @@ namespace BusTicketingSystem.Repositories
 
         public async Task<(List<Booking> items, int totalCount)> GetPagedAsync(int pageNumber, int pageSize)
         {
-            var query = _context.Bookings.Where(b => !b.IsDeleted).OrderByDescending(b => b.BookingId);
+            var query = _context.Bookings
+                .Include(b => b.Refund)          // <-- add this Include
+                .Where(b => !b.IsDeleted)
+                .OrderByDescending(b => b.BookingId);
             var totalCount = await query.CountAsync();
             var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
             return (items, totalCount);
         }
+
 
         public async Task<Booking?> GetByIdAsync(int bookingId)
         {
@@ -77,5 +81,16 @@ namespace BusTicketingSystem.Repositories
         {
             await _context.SaveChangesAsync();
         }
+
+        public async Task<List<Booking>> GetByUserIdWithRefundAsync(int userId)
+        {
+            return await _context.Bookings
+                .Include(b => b.Schedule)
+                .Include(b => b.Refund)          // <-- include refund in same query
+                .Where(b => b.UserId == userId && !b.IsDeleted)
+                .OrderByDescending(b => b.BookingDate)
+                .ToListAsync();
+        }
+
     }
 }

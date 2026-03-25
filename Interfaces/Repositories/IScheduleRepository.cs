@@ -14,10 +14,17 @@ namespace BusTicketingSystem.Interfaces.Repositories
         Task<List<Schedule>> GetByFromCityAsync(string fromCity);
         Task<List<Schedule>> GetByToCityAsync(string toCity);
         Task<(List<Schedule> items, int totalCount)> SearchSchedulesAsync(ScheduleSearchRequest request);
-
+        // Add these two methods
+        Task<bool> HasActiveBookingsForBusAsync(int busId);
+        Task<bool> HasActiveBookingsForRouteAsync(int routeId);
 
         Task<IDbContextTransaction> BeginTransactionAsync();
         Task<bool> HasOverlappingScheduleAsync(int busId, DateTime travelDate, TimeSpan departureTime, TimeSpan arrivalTime, bool isOvernight, int? excludeScheduleId = null);
         Task<(IEnumerable<Schedule>, int)> SearchAsync(string? keyword, int pageNumber, int pageSize);
+        Task<bool> HasFutureSchedulesForBusAsync(int busId);
+        Task<bool> HasFutureSchedulesForRouteAsync(int routeId);
+        Task<int> MarkPastSchedulesInactiveAsync();
+
+
     }
 }

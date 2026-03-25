@@ -10,6 +10,7 @@
         public DateTime BookingDate { get; set; }
         public string CancellationReason { get; set; } = string.Empty;
         public string CancelledBy { get; set; } = string.Empty;
+        public BookingRefundDto? Refund { get; set; }
     }
 
     public class BookingDetailResponseDto
@@ -41,5 +42,15 @@
         public TimeSpan DepartureTime { get; set; }
         public TimeSpan ArrivalTime { get; set; }
         public int AvailableSeats { get; set; }
+    }
+
+    public class BookingRefundDto
+    {
+        public int RefundId { get; set; }
+        public decimal RefundAmount { get; set; }
+        public decimal CancellationFee { get; set; }
+        public double RefundPercentage { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public DateTime? ProcessedAt { get; set; }
     }
 }

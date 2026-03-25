@@ -166,6 +166,9 @@ namespace BusTicketingSystem.Services
         public async Task<ApiResponse<PagedResponse<ScheduleResponseDto>>>
             GetAllAsync(int pageNumber, int pageSize, string? keyword = null)
         {
+            // Mark past schedules inactive so admin list shows correct status
+            await MarkPastSchedulesInactiveAsync();
+
             var (schedules, totalCount) =
                 await _scheduleRepository.GetPagedAsync(pageNumber, pageSize, keyword);
 
@@ -380,25 +383,64 @@ namespace BusTicketingSystem.Services
         }
 
         // REPLACE the existing SearchSchedulesAsync method with:
-        public async Task<ApiResponse<PagedResponse<ScheduleResponseDto>>> SearchSchedulesAsync(ScheduleSearchRequest request)
+        //public async Task<ApiResponse<PagedResponse<ScheduleResponseDto>>> SearchSchedulesAsync(ScheduleSearchRequest request)
+        //{
+        //    // Mark past schedules inactive before returning results
+        //    await MarkPastSchedulesInactiveAsync();
+        //    var (items, totalCount) = await _scheduleRepository.SearchSchedulesAsync(request);
+
+        //    //var (schedules, totalCount) = await _scheduleRepository.SearchSchedulesAsync(request);
+
+        //    // Sync stale AvailableSeats counter before returning
+        //    await SyncAvailableSeatsAsync(schedules);
+
+        //    var mapped = schedules.Select(MapToDto).ToList();
+
+        //    var paged = new PagedResponse<ScheduleResponseDto>
+        //    {
+        //        Items = mapped,
+        //        TotalCount = totalCount,
+        //        PageNumber = request.PageNumber,
+        //        PageSize = request.PageSize
+        //    };
+
+        //    return ApiResponse<PagedResponse<ScheduleResponseDto>>.SuccessResponse(paged);
+        //}
+
+        public async Task<ApiResponse<PagedResponse<ScheduleResponseDto>>>
+            SearchSchedulesAsync(ScheduleSearchRequest request)
         {
-            var (schedules, totalCount) = await _scheduleRepository.SearchSchedulesAsync(request);
+            // Mark past schedules inactive before filtering
+            await MarkPastSchedulesInactiveAsync();
 
-            // Sync stale AvailableSeats counter before returning
-            await SyncAvailableSeatsAsync(schedules);
+            var (items, totalCount) = await _scheduleRepository
+                .SearchSchedulesAsync(request);
 
-            var mapped = schedules.Select(MapToDto).ToList();
+            // Sync stale AvailableSeats counter before returning to user
+            await SyncAvailableSeatsAsync(items);
+
+            var pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
+            var pageSize = request.PageSize < 1 ? 10 : request.PageSize;
 
             var paged = new PagedResponse<ScheduleResponseDto>
             {
-                Items = mapped,
+                Items = items.Select(MapToDto).ToList(),
                 TotalCount = totalCount,
-                PageNumber = request.PageNumber,
-                PageSize = request.PageSize
+                PageNumber = pageNumber,
+                PageSize = pageSize
             };
 
-            return ApiResponse<PagedResponse<ScheduleResponseDto>>.SuccessResponse(paged);
+            return ApiResponse<PagedResponse<ScheduleResponseDto>>
+                .SuccessResponse(paged);
         }
+
+
+
+        public async Task<int> MarkPastSchedulesInactiveAsync()
+        {
+            return await _scheduleRepository.MarkPastSchedulesInactiveAsync();
+        }
+
 
 
         private ScheduleResponseDto MapToDto(Schedule s)
