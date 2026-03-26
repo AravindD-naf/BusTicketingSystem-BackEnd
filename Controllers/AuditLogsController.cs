@@ -1,5 +1,4 @@
-﻿using Asp.Versioning;
-using BusTicketingSystem.DTOs.Requests;
+﻿using BusTicketingSystem.DTOs.Requests;
 using BusTicketingSystem.Helpers;
 using BusTicketingSystem.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -8,8 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace BusTicketingSystem.Controllers
 {
     [ApiController]
-    [Route("api/v{version:apiVersion}/auditlogs")]
-    [ApiVersion("1.0")]
+    [Route("api/v1/auditlogs")]
     [Authorize(Roles = "Admin")]
     public class AuditLogsController : ControllerBase
     {

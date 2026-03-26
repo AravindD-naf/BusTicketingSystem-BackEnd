@@ -1,5 +1,4 @@
-﻿using Asp.Versioning;
-using BusTicketingSystem.DTOs.Requests;
+﻿using BusTicketingSystem.DTOs.Requests;
 using BusTicketingSystem.Helpers;
 using BusTicketingSystem.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -9,8 +8,7 @@ using System.Security.Claims;
 namespace BusTicketingSystem.Controllers
 {
     [ApiController]
-    [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/routes")]
+    [Route("api/v1/routes")]
     public class RouteController : ControllerBase
     {
         private readonly IRouteService _routeService;
