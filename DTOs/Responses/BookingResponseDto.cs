@@ -11,6 +11,13 @@
         public string CancellationReason { get; set; } = string.Empty;
         public string CancelledBy { get; set; } = string.Empty;
         public BookingRefundDto? Refund { get; set; }
+
+        // Route / Schedule details (for profile & my-bookings display)
+        public string Source { get; set; } = string.Empty;
+        public string Destination { get; set; } = string.Empty;
+        public DateTime? TravelDate { get; set; }
+        public string DepartureTime { get; set; } = string.Empty;
+        public string ArrivalTime { get; set; } = string.Empty;
     }
 
     public class BookingDetailResponseDto

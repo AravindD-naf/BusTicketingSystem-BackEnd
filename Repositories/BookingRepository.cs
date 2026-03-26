@@ -86,7 +86,8 @@ namespace BusTicketingSystem.Repositories
         {
             return await _context.Bookings
                 .Include(b => b.Schedule)
-                .Include(b => b.Refund)          // <-- include refund in same query
+                    .ThenInclude(s => s.Route)
+                .Include(b => b.Refund)
                 .Where(b => b.UserId == userId && !b.IsDeleted)
                 .OrderByDescending(b => b.BookingDate)
                 .ToListAsync();

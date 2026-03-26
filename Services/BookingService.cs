@@ -372,7 +372,12 @@ namespace BusTicketingSystem.Services
                     RefundPercentage = b.Refund.RefundPercentage,
                     Status = b.Refund.Status.ToString(),
                     ProcessedAt = b.Refund.ProcessedAt
-                }
+                },
+                Source = b.Schedule?.Route?.Source ?? string.Empty,
+                Destination = b.Schedule?.Route?.Destination ?? string.Empty,
+                TravelDate = b.Schedule?.TravelDate,
+                DepartureTime = b.Schedule?.DepartureTime.ToString(@"hh\:mm") ?? string.Empty,
+                ArrivalTime = b.Schedule?.ArrivalTime.ToString(@"hh\:mm") ?? string.Empty
             };
         }
     }
