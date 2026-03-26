@@ -184,9 +184,12 @@ namespace BusTicketingSystem.Services
             await _scheduleRepository.MarkPastSchedulesInactiveAsync();
 
             var bookings = await _bookingRepository.GetByUserIdWithRefundAsync(userId);
+            var totalCount = await _bookingRepository.GetTotalCountByUserIdAsync(userId);
 
-            return ApiResponse<List<BookingResponseDto>>
+            var result = ApiResponse<List<BookingResponseDto>>
                 .SuccessResponse(bookings.Select(MapToDto).ToList());
+            result.TotalCount = totalCount;
+            return result;
         }
 
         public async Task<(List<BookingResponseDto> items, int totalCount)> GetAllBookingsAsync(int pageNumber, int pageSize)

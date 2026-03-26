@@ -93,5 +93,12 @@ namespace BusTicketingSystem.Repositories
                 .ToListAsync();
         }
 
+        public async Task<int> GetTotalCountByUserIdAsync(int userId)
+        {
+            return await _context.Bookings
+                .IgnoreQueryFilters()
+                .CountAsync(b => b.UserId == userId);
+        }
+
     }
 }
