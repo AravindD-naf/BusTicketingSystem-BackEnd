@@ -22,6 +22,7 @@
         // Promo code details
         public string? PromoCodeUsed { get; set; }
         public decimal DiscountAmount { get; set; }
+        public string PNR { get; set; } = string.Empty;
     }
 
     public class BookingDetailResponseDto
@@ -57,6 +58,7 @@
         // Promo code details
         public string? PromoCodeUsed { get; set; }
         public decimal DiscountAmount { get; set; }
+        public string PNR { get; set; } = string.Empty;
     }
 
     public class BookingRefundDto

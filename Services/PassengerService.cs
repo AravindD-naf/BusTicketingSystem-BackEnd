@@ -41,10 +41,15 @@ namespace BusTicketingSystem.Services
             if (booking.UserId != userId)
                 throw new UnauthorizedAccessException("You can only add passengers to your own booking");
 
-            if (dto.Passengers.Count != booking.NumberOfSeats)
+            if (dto.Passengers.Count == 0)
                 throw new ValidationException(
-                    $"Number of passengers must match number of seats")
-                    .AddError("passengers", $"Expected {booking.NumberOfSeats} passengers, got {dto.Passengers.Count}");
+                    $"At least one passenger is required")
+                    .AddError("passengers", "Passengers list cannot be empty");
+
+            if (dto.Passengers.Count > booking.NumberOfSeats)
+                throw new ValidationException(
+                    $"Number of passengers cannot exceed number of seats")
+                    .AddError("passengers", $"Booking has {booking.NumberOfSeats} seats, got {dto.Passengers.Count} passengers");
 
             var passengers = new List<Passenger>();
 

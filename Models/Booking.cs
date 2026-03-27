@@ -45,6 +45,10 @@ namespace BusTicketingSystem.Models
         [MaxLength(20)]
         public string CancelledBy { get; set; } = string.Empty;
 
+        // Unique PNR for this booking — generated on creation
+        [MaxLength(20)]
+        public string PNR { get; set; } = string.Empty;
+
         // Promo code applied to this booking
         [MaxLength(50)]
         public string? PromoCodeUsed { get; set; }

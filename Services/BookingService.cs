@@ -40,6 +40,9 @@ namespace BusTicketingSystem.Services
             if (dto.SeatNumbers == null || dto.SeatNumbers.Count == 0)
                 throw ValidationException.ForField("seatNumbers", "At least one seat must be selected");
 
+            if (dto.SeatNumbers.Count > 6)
+                throw ValidationException.ForField("seatNumbers", "Maximum 6 seats allowed per booking");
+
             var schedule = await _scheduleRepository.GetByIdAsync(dto.ScheduleId);
 
             if (schedule == null || schedule.IsDeleted || !schedule.IsActive)
@@ -92,7 +95,8 @@ namespace BusTicketingSystem.Services
                     NumberOfSeats = dto.SeatNumbers.Count,
                     TotalAmount = totalAmount,
                     BookingStatus = BookingStatus.Pending,
-                    BookingDate = DateTime.UtcNow
+                    BookingDate = DateTime.UtcNow,
+                    PNR = GeneratePNR()
                 };
 
                 await _bookingRepository.AddAsync(booking);
@@ -242,7 +246,8 @@ namespace BusTicketingSystem.Services
                 ArrivalTime = schedule.ArrivalTime,
                 AvailableSeats = schedule.AvailableSeats,
                 PromoCodeUsed = booking.PromoCodeUsed,
-                DiscountAmount = booking.DiscountAmount
+                DiscountAmount = booking.DiscountAmount,
+                PNR = booking.PNR ?? string.Empty
             };
 
             return ApiResponse<BookingDetailResponseDto>
@@ -384,8 +389,16 @@ namespace BusTicketingSystem.Services
                 DepartureTime = b.Schedule?.DepartureTime.ToString(@"hh\:mm") ?? string.Empty,
                 ArrivalTime = b.Schedule?.ArrivalTime.ToString(@"hh\:mm") ?? string.Empty,
                 PromoCodeUsed = b.PromoCodeUsed,
-                DiscountAmount = b.DiscountAmount
+                DiscountAmount = b.DiscountAmount,
+                PNR = b.PNR ?? string.Empty
             };
+        }
+
+        private static string GeneratePNR()
+        {
+            const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+            var rng = new Random();
+            return new string(Enumerable.Range(0, 8).Select(_ => chars[rng.Next(chars.Length)]).ToArray());
         }
     }
 }
