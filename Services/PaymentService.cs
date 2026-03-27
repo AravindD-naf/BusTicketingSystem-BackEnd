@@ -84,8 +84,13 @@ namespace BusTicketingSystem.Services
 
             decimal finalAmount = booking.TotalAmount - discountAmount;
 
-            // Validate the amount sent from frontend matches expected final amount
-            if (Math.Abs(amount - finalAmount) > 0.01m)
+            // Compute expected grand total (base fare - discount + 6% tax + ₹20 convenience fee)
+            // and validate against what the frontend sent
+            decimal tax = Math.Round(finalAmount * 0.06m);
+            const decimal convenienceFee = 20m;
+            decimal expectedGrandTotal = finalAmount + tax + convenienceFee;
+
+            if (Math.Abs(amount - expectedGrandTotal) > 1m)
                 throw new PaymentOperationException(
                     "Payment amount does not match booking total after discount",
                     PaymentOperationException.PaymentErrorType.InvalidAmount);
@@ -93,7 +98,7 @@ namespace BusTicketingSystem.Services
             var payment = new Payment
             {
                 BookingId = bookingId,
-                Amount = finalAmount,
+                Amount = expectedGrandTotal,
                 PaymentMethod = paymentMethod,
                 Status = PaymentStatus.Pending,
                 CreatedAt = DateTime.UtcNow,
@@ -113,7 +118,7 @@ namespace BusTicketingSystem.Services
                 "Payment",
                 payment.PaymentId.ToString(),
                 null,
-                new { bookingId, amount = finalAmount, paymentMethod, promoCode, discountAmount },
+                new { bookingId, amount = expectedGrandTotal, paymentMethod, promoCode, discountAmount },
                 userId,
                 ipAddress);
 
