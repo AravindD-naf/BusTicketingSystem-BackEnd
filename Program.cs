@@ -164,7 +164,9 @@ app.UseSwaggerUI(options =>
 
 app.UseMiddleware<ExceptionMiddleware>();
 
-app.UseCors("AllowSpecific");
+// Use AllowAll for REST API endpoints (no credentials needed)
+// SignalR hub uses AllowSpecific (requires AllowCredentials for WebSockets)
+app.UseCors("AllowAll");
 
 app.UseHttpsRedirection();
 
@@ -174,6 +176,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<ChatHub>("/hubs/chat");
+app.MapHub<ChatHub>("/hubs/chat").RequireCors("AllowSpecific");
 
 app.Run();
