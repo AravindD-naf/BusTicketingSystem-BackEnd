@@ -66,7 +66,7 @@ namespace BusTicketingSystem.Services
                     PaymentOperationException.PaymentErrorType.ProcessingError);
 
             // Apply promo code discount if provided
-            decimal discountAmount = 0;
+            decimal discountAmount = booking.DiscountAmount; // use already-stored discount by default
             if (!string.IsNullOrWhiteSpace(promoCode))
             {
                 var promoResult = await _promoCodeService.ValidateAsync(promoCode, booking.TotalAmount);
