@@ -138,7 +138,13 @@ builder.Services.AddCors(options =>
 
     options.AddPolicy("AllowSpecific", policy =>
     {
-        policy.WithOrigins("http://localhost:4000", "http://localhost:4200", "http://localhost:5000", "http://localhost:5001", "https://localhost:5000", "https://localhost:5001")
+        policy.WithOrigins(
+                "http://localhost:4000",
+                "http://localhost:4200",
+                "http://localhost:5000",
+                "http://localhost:5001",
+                "https://localhost:5000",
+                "https://localhost:5001")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -164,11 +170,13 @@ app.UseSwaggerUI(options =>
 
 app.UseMiddleware<ExceptionMiddleware>();
 
-// Use AllowAll for REST API endpoints (no credentials needed)
-// SignalR hub uses AllowSpecific (requires AllowCredentials for WebSockets)
 app.UseCors("AllowAll");
 
-app.UseHttpsRedirection();
+// Only redirect to HTTPS in production — in dev this breaks SignalR negotiate
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseRateLimiter();
 
@@ -176,6 +184,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+// Hub uses AllowSpecific so credentials work for WebSocket handshake
 app.MapHub<ChatHub>("/hubs/chat").RequireCors("AllowSpecific");
 
 app.Run();
