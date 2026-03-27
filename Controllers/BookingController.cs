@@ -152,7 +152,7 @@ namespace BusTicketingSystem.Controllers
         public async Task<IActionResult> InitiatePayment([FromBody] InitiatePaymentRequestDto dto)
         {
             var result = await _paymentService.InitiatePaymentAsync(
-                dto.BookingId, dto.Amount, dto.PaymentMethod, GetUserId(), GetIpAddress());
+                dto.BookingId, dto.Amount, dto.PaymentMethod, GetUserId(), GetIpAddress(), dto.PromoCode);
             return Ok(result);
         }
 

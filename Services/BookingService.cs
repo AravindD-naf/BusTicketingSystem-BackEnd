@@ -240,7 +240,9 @@ namespace BusTicketingSystem.Services
                 TravelDate = schedule.TravelDate,
                 DepartureTime = schedule.DepartureTime,
                 ArrivalTime = schedule.ArrivalTime,
-                AvailableSeats = schedule.AvailableSeats
+                AvailableSeats = schedule.AvailableSeats,
+                PromoCodeUsed = booking.PromoCodeUsed,
+                DiscountAmount = booking.DiscountAmount
             };
 
             return ApiResponse<BookingDetailResponseDto>
@@ -380,7 +382,9 @@ namespace BusTicketingSystem.Services
                 Destination = b.Schedule?.Route?.Destination ?? string.Empty,
                 TravelDate = b.Schedule?.TravelDate,
                 DepartureTime = b.Schedule?.DepartureTime.ToString(@"hh\:mm") ?? string.Empty,
-                ArrivalTime = b.Schedule?.ArrivalTime.ToString(@"hh\:mm") ?? string.Empty
+                ArrivalTime = b.Schedule?.ArrivalTime.ToString(@"hh\:mm") ?? string.Empty,
+                PromoCodeUsed = b.PromoCodeUsed,
+                DiscountAmount = b.DiscountAmount
             };
         }
     }

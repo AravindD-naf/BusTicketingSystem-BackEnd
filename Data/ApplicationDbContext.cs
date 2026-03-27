@@ -32,6 +32,8 @@ namespace BusTicketingSystem.Data
 
         public DbSet<ErrorLog> ErrorLogs { get; set; }
 
+        public DbSet<PromoCode> PromoCodes { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -67,6 +69,15 @@ namespace BusTicketingSystem.Data
                 );
 
             modelBuilder.Entity<AuditLog>().HasKey(a => a.AuditId);
+
+            // Seed promo codes matching the landing page deals
+            modelBuilder.Entity<PromoCode>().HasData(
+                new PromoCode { PromoCodeId = 1, Code = "FIRSTBUS20",  DiscountType = DiscountType.Percentage, DiscountValue = 20, MaxDiscountAmount = 0,   MinBookingAmount = 300,  ValidFrom = new DateTime(2026,1,1), ValidUntil = new DateTime(2026,5,31), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026,1,1) },
+                new PromoCode { PromoCodeId = 2, Code = "WEEKEND150",  DiscountType = DiscountType.Flat,       DiscountValue = 150, MaxDiscountAmount = 150, MinBookingAmount = 500,  ValidFrom = new DateTime(2026,1,1), ValidUntil = new DateTime(2026,4,30), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026,1,1) },
+                new PromoCode { PromoCodeId = 3, Code = "MEMBER100",   DiscountType = DiscountType.Flat,       DiscountValue = 100, MaxDiscountAmount = 100, MinBookingAmount = 400,  ValidFrom = new DateTime(2026,1,1), ValidUntil = new DateTime(2026,4,15), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026,1,1) },
+                new PromoCode { PromoCodeId = 4, Code = "SLEEPER15",   DiscountType = DiscountType.Percentage, DiscountValue = 15,  MaxDiscountAmount = 300, MinBookingAmount = 600,  ValidFrom = new DateTime(2026,1,1), ValidUntil = new DateTime(2026,4,30), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026,1,1) },
+                new PromoCode { PromoCodeId = 5, Code = "GROUP10",     DiscountType = DiscountType.Percentage, DiscountValue = 10,  MaxDiscountAmount = 500, MinBookingAmount = 0,    ValidFrom = new DateTime(2026,1,1), ValidUntil = new DateTime(2026,5,31), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026,1,1) }
+            );
 
             modelBuilder.Entity<Models.Route>(entity =>
             {

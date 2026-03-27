@@ -45,6 +45,12 @@ namespace BusTicketingSystem.Models
         [MaxLength(20)]
         public string CancelledBy { get; set; } = string.Empty;
 
+        // Promo code applied to this booking
+        [MaxLength(50)]
+        public string? PromoCodeUsed { get; set; }
+
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal DiscountAmount { get; set; } = 0;
 
         public bool IsDeleted { get; set; } = false;
 

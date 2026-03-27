@@ -19,6 +19,7 @@ namespace BusTicketingSystem.Services
         private readonly ICancellationPolicyRepository _policyRepository;
         private readonly IAuditRepository _auditRepository;
         private readonly ISeatRepository _seatRepository;
+        private readonly IPromoCodeService _promoCodeService;
 
         public PaymentService(
             IPaymentRepository paymentRepository,
@@ -27,7 +28,8 @@ namespace BusTicketingSystem.Services
             IScheduleRepository scheduleRepository,
             ICancellationPolicyRepository policyRepository,
             IAuditRepository auditRepository,
-            ISeatRepository seatRepository)
+            ISeatRepository seatRepository,
+            IPromoCodeService promoCodeService)
         {
             _paymentRepository = paymentRepository;
             _refundRepository = refundRepository;
@@ -36,6 +38,7 @@ namespace BusTicketingSystem.Services
             _policyRepository = policyRepository;
             _auditRepository = auditRepository;
             _seatRepository = seatRepository;
+            _promoCodeService = promoCodeService;
         }
 
         public async Task<ApiResponse<PaymentResponseDto>> InitiatePaymentAsync(
@@ -43,7 +46,8 @@ namespace BusTicketingSystem.Services
             decimal amount,
             string paymentMethod,
             int userId,
-            string ipAddress
+            string ipAddress,
+            string? promoCode = null
             )
         {
             var booking = await _bookingRepository.GetByIdAsync(bookingId);
@@ -58,15 +62,35 @@ namespace BusTicketingSystem.Services
                     "Can only initiate payment for Pending bookings",
                     PaymentOperationException.PaymentErrorType.ProcessingError);
 
-            if (Math.Abs(amount - booking.TotalAmount) > 0.01m)
+            // Apply promo code discount if provided
+            decimal discountAmount = 0;
+            if (!string.IsNullOrWhiteSpace(promoCode))
+            {
+                var promoResult = await _promoCodeService.ValidateAsync(promoCode, booking.TotalAmount);
+                if (!promoResult.IsValid)
+                    throw new PaymentOperationException(
+                        promoResult.Message,
+                        PaymentOperationException.PaymentErrorType.ProcessingError);
+
+                discountAmount = promoResult.DiscountAmount;
+                booking.PromoCodeUsed = promoResult.Code;
+                booking.DiscountAmount = discountAmount;
+                await _bookingRepository.UpdateAsync(booking);
+                await _promoCodeService.IncrementUsageAsync(promoResult.Code);
+            }
+
+            decimal finalAmount = booking.TotalAmount - discountAmount;
+
+            // Validate the amount sent from frontend matches expected final amount
+            if (Math.Abs(amount - finalAmount) > 0.01m)
                 throw new PaymentOperationException(
-                    "Payment amount does not match booking total",
+                    "Payment amount does not match booking total after discount",
                     PaymentOperationException.PaymentErrorType.InvalidAmount);
 
             var payment = new Payment
             {
                 BookingId = bookingId,
-                Amount = amount,
+                Amount = finalAmount,
                 PaymentMethod = paymentMethod,
                 Status = PaymentStatus.Pending,
                 CreatedAt = DateTime.UtcNow,
@@ -86,7 +110,7 @@ namespace BusTicketingSystem.Services
                 "Payment",
                 payment.PaymentId.ToString(),
                 null,
-                new { bookingId, amount, paymentMethod },
+                new { bookingId, amount = finalAmount, paymentMethod, promoCode, discountAmount },
                 userId,
                 ipAddress);
 

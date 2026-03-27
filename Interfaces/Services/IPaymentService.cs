@@ -13,7 +13,8 @@ namespace BusTicketingSystem.Interfaces.Services
             decimal amount,
             string paymentMethod,
             int userId,
-            string ipAddress
+            string ipAddress,
+            string? promoCode = null
             );
 
         Task<ApiResponse<RefundResponseDto?>> GetRefundByBookingIdAsync(int bookingId);

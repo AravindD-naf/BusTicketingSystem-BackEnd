@@ -18,6 +18,10 @@
         public DateTime? TravelDate { get; set; }
         public string DepartureTime { get; set; } = string.Empty;
         public string ArrivalTime { get; set; } = string.Empty;
+
+        // Promo code details
+        public string? PromoCodeUsed { get; set; }
+        public decimal DiscountAmount { get; set; }
     }
 
     public class BookingDetailResponseDto
@@ -49,6 +53,10 @@
         public TimeSpan DepartureTime { get; set; }
         public TimeSpan ArrivalTime { get; set; }
         public int AvailableSeats { get; set; }
+
+        // Promo code details
+        public string? PromoCodeUsed { get; set; }
+        public decimal DiscountAmount { get; set; }
     }
 
     public class BookingRefundDto
