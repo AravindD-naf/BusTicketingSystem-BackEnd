@@ -33,6 +33,8 @@ namespace BusTicketingSystem.Data
         public DbSet<ErrorLog> ErrorLogs { get; set; }
 
         public DbSet<PromoCode> PromoCodes { get; set; }
+        public DbSet<Wallet> Wallets { get; set; }
+        public DbSet<WalletTransaction> WalletTransactions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -69,6 +71,10 @@ namespace BusTicketingSystem.Data
                 );
 
             modelBuilder.Entity<AuditLog>().HasKey(a => a.AuditId);
+
+            modelBuilder.Entity<Wallet>()
+                .HasIndex(w => w.UserId)
+                .IsUnique();
 
             // Seed promo codes matching the landing page deals
             modelBuilder.Entity<PromoCode>().HasData(

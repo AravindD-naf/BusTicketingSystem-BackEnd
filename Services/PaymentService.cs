@@ -20,6 +20,7 @@ namespace BusTicketingSystem.Services
         private readonly IAuditRepository _auditRepository;
         private readonly ISeatRepository _seatRepository;
         private readonly IPromoCodeService _promoCodeService;
+        private readonly IWalletService _walletService;
 
         public PaymentService(
             IPaymentRepository paymentRepository,
@@ -29,7 +30,8 @@ namespace BusTicketingSystem.Services
             ICancellationPolicyRepository policyRepository,
             IAuditRepository auditRepository,
             ISeatRepository seatRepository,
-            IPromoCodeService promoCodeService)
+            IPromoCodeService promoCodeService,
+            IWalletService walletService)
         {
             _paymentRepository = paymentRepository;
             _refundRepository = refundRepository;
@@ -39,6 +41,7 @@ namespace BusTicketingSystem.Services
             _auditRepository = auditRepository;
             _seatRepository = seatRepository;
             _promoCodeService = promoCodeService;
+            _walletService = walletService;
         }
 
         public async Task<ApiResponse<PaymentResponseDto>> InitiatePaymentAsync(
@@ -309,13 +312,31 @@ namespace BusTicketingSystem.Services
                     $"Cannot confirm refund with status: {refund.Status}",
                     RefundOperationException.RefundErrorType.ProcessingError);
 
-            // DUMMY REFUND PROCESSING
+            // Credit wallet if approved — refund goes directly to user's wallet
             refund.ProcessedAt = DateTime.UtcNow;
             refund.Status = dto.IsApproved ? RefundStatus.Completed : RefundStatus.Rejected;
             refund.Reason = dto.Reason;
 
             await _refundRepository.UpdateAsync(refund);
             await _refundRepository.SaveChangesAsync();
+
+            if (dto.IsApproved && refund.RefundAmount > 0)
+            {
+                var booking = await _bookingRepository.GetByIdAsync(refund.BookingId);
+                if (booking != null)
+                {
+                    try
+                    {
+                        await _walletService.CreditAsync(
+                            booking.UserId,
+                            refund.RefundAmount,
+                            $"Refund for Booking #{refund.BookingId}",
+                            refund.BookingId.ToString(),
+                            ipAddress);
+                    }
+                    catch { /* swallow — refund record is already saved */ }
+                }
+            }
 
             await _auditRepository.LogAuditAsync(
                 "CONFIRM_REFUND",

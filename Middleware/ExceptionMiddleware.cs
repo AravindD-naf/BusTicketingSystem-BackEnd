@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using BusTicketingSystem.Services;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -166,8 +167,15 @@ namespace BusTicketingSystem.Middleware
                     statusCode = StatusCodes.Status500InternalServerError;
                     errorCode = "DATABASE_ERROR";
                     userMessage = "An error occurred while saving data. Please try again.";
-                    // Log the inner message for diagnostics but never send it to the client
                     _logger.LogError(dbEx, "DbUpdateException: {Inner}", dbEx.InnerException?.Message ?? dbEx.Message);
+                    break;
+
+                // ── Raw SQL / ADO.NET errors (invalid column, constraint violations, etc.) ──
+                case Microsoft.Data.SqlClient.SqlException sqlEx:
+                    statusCode = StatusCodes.Status500InternalServerError;
+                    errorCode = "DATABASE_ERROR";
+                    userMessage = "A database error occurred. Please try again later.";
+                    _logger.LogError(sqlEx, "SqlException [{Number}]: {Message}", sqlEx.Number, sqlEx.Message);
                     break;
 
                 // ── Request cancellation (client disconnected) ──
