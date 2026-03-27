@@ -37,7 +37,7 @@ namespace BusTicketingSystem.Services
             if (schedule == null || schedule.IsDeleted || !schedule.IsActive)
                 throw new ResourceNotFoundException("Schedule", scheduleId.ToString());
 
-            // ADD THESE TWO LINES — clean up expired locks on every layout fetch
+            // ADD THESE TWO LINES ï¿½ clean up expired locks on every layout fetch
             await _seatRepository.CleanupExpiredLocksAsync();
             await _seatLockRepository.CleanupExpiredLocksAsync();
             // ?? Inline cleanup of expired pending bookings ??
@@ -50,7 +50,7 @@ namespace BusTicketingSystem.Services
                 ScheduleId = scheduleId,
                 BusId = schedule.BusId,
                 BusNumber = schedule.Bus?.BusNumber ?? string.Empty,
-                BaseFare = schedule.Route?.BaseFare ?? 0,
+                BaseFare = schedule.Fare > 0 ? schedule.Fare : (schedule.Route?.BaseFare ?? 0),
                 TotalSeats = schedule.TotalSeats,
                 AvailableSeats = seats.Count(s => s.SeatStatus == "Available"),
                 LockedSeats = seats.Count(s => s.SeatStatus == "Locked"),
