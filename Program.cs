@@ -1,6 +1,7 @@
 ﻿using Asp.Versioning;
 using BusTicketingSystem.Data;
 using BusTicketingSystem.Helpers;
+using BusTicketingSystem.Hubs;
 using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Interfaces.Services;
 using BusTicketingSystem.Middleware;
@@ -78,7 +79,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtSettings["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
+        // Allow SignalR to read JWT from query string
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var token = ctx.Request.Query["access_token"];
+                var path  = ctx.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/hubs/chat"))
+                    ctx.Token = token;
+                return Task.CompletedTask;
+            }
+        };
     });
+
+builder.Services.AddSignalR();
 
 builder.Services
     .AddControllers()
@@ -130,8 +145,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-//builder.Services.AddControllers();
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -151,7 +164,7 @@ app.UseSwaggerUI(options =>
 
 app.UseMiddleware<ExceptionMiddleware>();
 
-app.UseCors("AllowAll");
+app.UseCors("AllowSpecific");
 
 app.UseHttpsRedirection();
 
@@ -161,5 +174,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();

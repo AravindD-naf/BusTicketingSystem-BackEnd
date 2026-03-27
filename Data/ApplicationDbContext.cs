@@ -35,6 +35,7 @@ namespace BusTicketingSystem.Data
         public DbSet<PromoCode> PromoCodes { get; set; }
         public DbSet<Wallet> Wallets { get; set; }
         public DbSet<WalletTransaction> WalletTransactions { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -158,6 +159,18 @@ namespace BusTicketingSystem.Data
                 entity.HasQueryFilter(s => !s.IsDeleted);
             });
 
+            modelBuilder.Entity<ChatMessage>(entity =>
+            {
+                entity.HasOne(m => m.Sender)
+                    .WithMany()
+                    .HasForeignKey(m => m.SenderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(m => m.Receiver)
+                    .WithMany()
+                    .HasForeignKey(m => m.ReceiverId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
         }
     }
 }
