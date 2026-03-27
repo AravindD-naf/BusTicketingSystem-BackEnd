@@ -31,6 +31,14 @@ namespace BusTicketingSystem.Interfaces.Services
             int userId,
             string ipAddress);
 
+        /// <summary>
+        /// Admin-initiated refund: 100% of amount paid + 20% bonus credited instantly to wallet.
+        /// </summary>
+        Task<ApiResponse<RefundResponseDto>> InitiateAdminRefundAsync(
+            int bookingId,
+            int adminUserId,
+            string ipAddress);
+
   
         Task<ApiResponse<RefundResponseDto>> GetRefundAsync(int refundId);
 

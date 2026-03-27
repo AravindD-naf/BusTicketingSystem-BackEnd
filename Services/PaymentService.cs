@@ -247,11 +247,6 @@ namespace BusTicketingSystem.Services
             if (booking.UserId != userId)
                 throw new UnauthorizedAccessException("You cannot initiate refund for this booking.");
 
-            //if (booking.CancelledBy == "Customer")
-            //    throw new RefundOperationException(
-            //        "Refunds are not applicable for customer-initiated cancellations.",
-            //        RefundOperationException.RefundErrorType.InvalidRefund);
-
             var payment = await _paymentRepository.GetByBookingIdAsync(bookingId);
             if (payment == null || payment.Status != PaymentStatus.Success)
                 throw new RefundOperationException(
@@ -262,7 +257,6 @@ namespace BusTicketingSystem.Services
             if (existingRefund != null)
                 return ApiResponse<RefundResponseDto>.SuccessResponse(MapToDto(existingRefund));
 
-            // Calculate refund amount
             var (refundAmount, refundPercentage, cancellationFee) = await CalculateRefundAsync(bookingId);
 
             var refund = new Refund
@@ -281,13 +275,71 @@ namespace BusTicketingSystem.Services
             await _refundRepository.SaveChangesAsync();
 
             await _auditRepository.LogAuditAsync(
-                "INITIATE_REFUND",
-                "Refund",
-                refund.RefundId.ToString(),
-                null,
-                new { bookingId, refundAmount, refundPercentage },
-                userId,
-                ipAddress);
+                "INITIATE_REFUND", "Refund", refund.RefundId.ToString(), null,
+                new { bookingId, refundAmount, refundPercentage }, userId, ipAddress);
+
+            return ApiResponse<RefundResponseDto>.SuccessResponse(MapToDto(refund));
+        }
+
+        /// <summary>
+        /// Admin-initiated refund: 100% of amount paid + 20% bonus, auto-approved and
+        /// credited instantly to the customer's wallet.
+        /// </summary>
+        public async Task<ApiResponse<RefundResponseDto>> InitiateAdminRefundAsync(
+            int bookingId,
+            int adminUserId,
+            string ipAddress)
+        {
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+            if (booking == null || booking.IsDeleted)
+                throw new ResourceNotFoundException("Booking", bookingId.ToString());
+
+            var payment = await _paymentRepository.GetByBookingIdAsync(bookingId);
+            if (payment == null || payment.Status != PaymentStatus.Success)
+                // No payment was made — nothing to refund
+                return ApiResponse<RefundResponseDto>.SuccessResponse((RefundResponseDto)null!);
+
+            var existingRefund = await _refundRepository.GetByBookingIdAsync(bookingId);
+            if (existingRefund != null)
+                return ApiResponse<RefundResponseDto>.SuccessResponse(MapToDto(existingRefund));
+
+            // 100% of what the customer actually paid + 20% bonus
+            decimal amountPaid    = payment.Amount;
+            decimal bonus         = Math.Round(amountPaid * 0.20m, 2);
+            decimal totalRefund   = amountPaid + bonus;
+
+            var refund = new Refund
+            {
+                BookingId       = bookingId,
+                PaymentId       = payment.PaymentId,
+                RefundAmount    = totalRefund,
+                CancellationFee = 0,
+                RefundPercentage = 120, // 100% + 20% bonus
+                Status          = RefundStatus.Completed, // auto-approved
+                Reason          = "Booking cancelled by Admin — full refund + 20% compensation",
+                RequestedAt     = DateTime.UtcNow,
+                ProcessedAt     = DateTime.UtcNow
+            };
+
+            await _refundRepository.AddAsync(refund);
+            await _refundRepository.SaveChangesAsync();
+
+            // Credit wallet immediately
+            try
+            {
+                await _walletService.CreditAsync(
+                    booking.UserId,
+                    totalRefund,
+                    $"Admin cancellation refund for Booking #{bookingId} (100% + 20% bonus)",
+                    bookingId.ToString(),
+                    ipAddress);
+            }
+            catch { /* swallow — refund record is saved; wallet credit can be retried */ }
+
+            await _auditRepository.LogAuditAsync(
+                "ADMIN_REFUND", "Refund", refund.RefundId.ToString(), null,
+                new { bookingId, amountPaid, bonus, totalRefund, creditedToWallet = true },
+                adminUserId, ipAddress);
 
             return ApiResponse<RefundResponseDto>.SuccessResponse(MapToDto(refund));
         }

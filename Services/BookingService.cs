@@ -342,12 +342,18 @@ namespace BusTicketingSystem.Services
 
                     await _bookingRepository.SaveChangesAsync();
                     await transaction.CommitAsync();
+
                     // Auto-create refund only for Confirmed bookings (payment was made)
                     if (wasConfirmed)
                     {
                         try
                         {
-                            await _paymentService.InitiateRefundAsync(bookingId, userId, ipAddress);
+                            if (role == "Admin")
+                                // Admin cancellation: 100% paid amount + 20% bonus, credited to wallet instantly
+                                await _paymentService.InitiateAdminRefundAsync(bookingId, userId, ipAddress);
+                            else
+                                // Customer cancellation: standard policy-based refund (pending approval)
+                                await _paymentService.InitiateRefundAsync(bookingId, userId, ipAddress);
                         }
                         catch { /* swallow — refund failure should not un-cancel the booking */ }
                     }
