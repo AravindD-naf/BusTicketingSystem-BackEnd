@@ -140,9 +140,28 @@ namespace BusTicketingSystem.Repositories
                 .ToListAsync();
         }
 
-        // REPLACE the existing SearchSchedulesAsync method with:
-        public async Task<(List<Schedule> items, int totalCount)> SearchSchedulesAsync(ScheduleSearchRequest request)
+        // Simple overload used by tests — returns matching schedules for a city/date
+        public async Task<List<Schedule>> SearchSchedulesAsync(string fromCity, string toCity, DateTime travelDate)
         {
+            var from = fromCity.Trim().ToLower();
+            var to   = toCity.Trim().ToLower();
+            var date = travelDate.Date;
+
+            return await _context.Schedules
+                .Include(s => s.Route)
+                .Include(s => s.Bus)
+                .Where(s =>
+                    s.Route.Source.ToLower().Trim() == from &&
+                    s.Route.Destination.ToLower().Trim() == to &&
+                    s.TravelDate.Date == date &&
+                    s.IsActive &&
+                    !s.IsDeleted &&
+                    s.AvailableSeats > 0)
+                .ToListAsync();
+        }
+
+        // REPLACE the existing SearchSchedulesAsync method with:
+        public async Task<(List<Schedule> items, int totalCount)> SearchSchedulesAsync(ScheduleSearchRequest request)        {
             var from = request.FromCity.Trim().ToLower();
             var to   = request.ToCity.Trim().ToLower();
             var date = request.TravelDateUtc.Date;

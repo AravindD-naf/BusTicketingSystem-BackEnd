@@ -14,6 +14,7 @@ namespace BusTicketingSystem.Interfaces.Repositories
         Task<List<Schedule>> GetByFromCityAsync(string fromCity);
         Task<List<Schedule>> GetByToCityAsync(string toCity);
         Task<(List<Schedule> items, int totalCount)> SearchSchedulesAsync(ScheduleSearchRequest request);
+        Task<List<Schedule>> SearchSchedulesAsync(string fromCity, string toCity, DateTime travelDate);
         // Add these two methods
         Task<bool> HasActiveBookingsForBusAsync(int busId);
         Task<bool> HasActiveBookingsForRouteAsync(int routeId);
