@@ -184,7 +184,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-// Hub uses AllowSpecific so credentials work for WebSocket handshake
-app.MapHub<ChatHub>("/hubs/chat").RequireCors("AllowSpecific");
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();
