@@ -25,8 +25,9 @@ namespace BusTicketingSystem.Controllers
                 .Where(m => !m.IsDeleted &&
                     ((m.SenderId == myId && m.ReceiverId == otherUserId) ||
                      (m.SenderId == otherUserId && m.ReceiverId == myId)))
+                .OrderByDescending(m => m.SentAt)
+                .Take(100)
                 .OrderBy(m => m.SentAt)
-                .TakeLast(100)
                 .Select(m => new {
                     m.MessageId, m.SenderId, m.ReceiverId,
                     m.Content, m.SentAt, m.IsReadByReceiver
