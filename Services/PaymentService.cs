@@ -60,10 +60,19 @@ namespace BusTicketingSystem.Services
             if (booking.UserId != userId)
                 throw new UnauthorizedAccessException("You cannot initiate payment for this booking.");
 
-            if (booking.BookingStatus != BookingStatus.Pending)
+            if (booking.BookingStatus != BookingStatus.Pending &&
+                booking.BookingStatus != BookingStatus.PaymentFailed &&
+                booking.BookingStatus != BookingStatus.PaymentProcessing)
                 throw new PaymentOperationException(
-                    "Can only initiate payment for Pending bookings",
+                    "Cannot initiate payment for this booking",
                     PaymentOperationException.PaymentErrorType.ProcessingError);
+
+            // Reset status back to Pending so the flow works cleanly
+            if (booking.BookingStatus != BookingStatus.Pending)
+            {
+                booking.BookingStatus = BookingStatus.Pending;
+                await _bookingRepository.UpdateAsync(booking);
+            }
 
             // Apply promo code discount if provided
             decimal discountAmount = booking.DiscountAmount; // use already-stored discount by default
