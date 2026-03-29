@@ -27,8 +27,13 @@ namespace BusTicketingSystem.Controllers
         [HttpPost("create-order")]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest req)
         {
-            var keyId     = _config["Razorpay:KeyId"]     ?? throw new InvalidOperationException("Razorpay KeyId missing");
-            var keySecret = _config["Razorpay:KeySecret"] ?? throw new InvalidOperationException("Razorpay KeySecret missing");
+            var keyId     = _config["Razorpay:KeyId"]     ?? "";
+            var keySecret = _config["Razorpay:KeySecret"] ?? "";
+
+            if (string.IsNullOrWhiteSpace(keyId) || keyId.Contains("yourkeyid") ||
+                string.IsNullOrWhiteSpace(keySecret) || keySecret.Contains("yourkeysecret"))
+                return BadRequest(ApiResponse<object>.FailureResponse(
+                    "Razorpay API keys are not configured. Please add your test keys to appsettings.json under 'Razorpay:KeyId' and 'Razorpay:KeySecret'."));
 
             // Razorpay amount is in paise (1 INR = 100 paise)
             var amountInPaise = (int)(req.Amount * 100);
@@ -73,7 +78,6 @@ namespace BusTicketingSystem.Controllers
         {
             var keySecret = _config["Razorpay:KeySecret"] ?? "";
 
-            // HMAC-SHA256 signature verification
             var payload   = $"{req.RazorpayOrderId}|{req.RazorpayPaymentId}";
             var keyBytes  = Encoding.UTF8.GetBytes(keySecret);
             var msgBytes  = Encoding.UTF8.GetBytes(payload);
