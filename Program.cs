@@ -153,6 +153,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpClient(); // for Razorpay API calls
 
 var app = builder.Build();
 
