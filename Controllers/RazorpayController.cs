@@ -1,8 +1,7 @@
 using BusTicketingSystem.Data;
 using BusTicketingSystem.Helpers;
 using BusTicketingSystem.Interfaces.Services;
-using BusTicketingSystem.Models;
-using BusTicketingSystem.Models.Enums;
+using BusTicketingSystem.Models;using BusTicketingSystem.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -110,7 +109,20 @@ namespace BusTicketingSystem.Controllers
             if (booking.UserId != userId)
                 return Unauthorized(ApiResponse<object>.FailureResponse("Unauthorized."));
 
-            // Apply promo discount if stored
+            // Apply promo discount if stored on booking, or apply new promo from request
+            if (!string.IsNullOrWhiteSpace(req.PromoCode) && booking.PromoCodeUsed != req.PromoCode)
+            {
+                // Promo not yet saved — apply it now via PaymentService logic
+                var promoSvc = HttpContext.RequestServices.GetRequiredService<IPromoCodeService>();
+                var promoResult = await promoSvc.ValidateAsync(req.PromoCode, booking.TotalAmount);
+                if (promoResult.IsValid)
+                {
+                    booking.PromoCodeUsed = promoResult.Code;
+                    booking.DiscountAmount = promoResult.DiscountAmount;
+                    await promoSvc.IncrementUsageAsync(promoResult.Code);
+                }
+            }
+
             decimal discountAmount = booking.DiscountAmount;
             decimal finalBase      = booking.TotalAmount - discountAmount;
             decimal tax            = Math.Round(finalBase * 0.06m);
@@ -174,5 +186,6 @@ namespace BusTicketingSystem.Controllers
         public string RazorpayPaymentId   { get; set; } = string.Empty;
         public string RazorpaySignature   { get; set; } = string.Empty;
         public string PaymentMethod       { get; set; } = "Razorpay";
+        public string? PromoCode          { get; set; }
     }
 }
