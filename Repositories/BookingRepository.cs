@@ -50,7 +50,11 @@ namespace BusTicketingSystem.Repositories
         {
             return await _context.Bookings
                 .Include(b => b.Schedule)
+                    .ThenInclude(s => s.Route)
+                .Include(b => b.Schedule)
+                    .ThenInclude(s => s.Bus)
                 .Include(b => b.User)
+                .Include(b => b.Seats)
                 .FirstOrDefaultAsync(b =>
                     b.BookingId == bookingId &&
                     !b.IsDeleted);
@@ -87,7 +91,10 @@ namespace BusTicketingSystem.Repositories
             return await _context.Bookings
                 .Include(b => b.Schedule)
                     .ThenInclude(s => s.Route)
+                .Include(b => b.Schedule)
+                    .ThenInclude(s => s.Bus)
                 .Include(b => b.Refund)
+                .Include(b => b.Seats)
                 .Where(b => b.UserId == userId && !b.IsDeleted)
                 .OrderByDescending(b => b.BookingDate)
                 .ToListAsync();

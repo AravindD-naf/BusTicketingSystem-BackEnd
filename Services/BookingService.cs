@@ -219,6 +219,13 @@ namespace BusTicketingSystem.Services
                     "Schedule details are incomplete",
                     BookingOperationException.BookingErrorType.InvalidSchedule);
 
+            var seats = await _seatRepository.GetSeatsByScheduleIdAsync(booking.ScheduleId);
+            var bookingSeats = seats
+                .Where(s => s.BookingId == booking.BookingId)
+                .Select(s => s.SeatNumber)
+                .OrderBy(s => s)
+                .ToList();
+
             var bookingDetail = new BookingDetailResponseDto
             {
                 BookingId = booking.BookingId,
@@ -247,7 +254,8 @@ namespace BusTicketingSystem.Services
                 AvailableSeats = schedule.AvailableSeats,
                 PromoCodeUsed = booking.PromoCodeUsed,
                 DiscountAmount = booking.DiscountAmount,
-                PNR = booking.PNR ?? string.Empty
+                PNR = booking.PNR ?? string.Empty,
+                SeatNumbers = bookingSeats
             };
 
             return ApiResponse<BookingDetailResponseDto>
@@ -394,6 +402,10 @@ namespace BusTicketingSystem.Services
                 TravelDate = b.Schedule?.TravelDate,
                 DepartureTime = b.Schedule?.DepartureTime.ToString(@"hh\:mm") ?? string.Empty,
                 ArrivalTime = b.Schedule?.ArrivalTime.ToString(@"hh\:mm") ?? string.Empty,
+                BusNumber = b.Schedule?.Bus?.BusNumber ?? string.Empty,
+                BusType = b.Schedule?.Bus?.BusType ?? string.Empty,
+                OperatorName = b.Schedule?.Bus?.OperatorName ?? string.Empty,
+                SeatNumbers = b.Seats?.Select(s => s.SeatNumber).OrderBy(s => s).ToList() ?? new List<string>(),
                 PromoCodeUsed = b.PromoCodeUsed,
                 DiscountAmount = b.DiscountAmount,
                 PNR = b.PNR ?? string.Empty

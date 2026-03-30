@@ -19,6 +19,14 @@
         public string DepartureTime { get; set; } = string.Empty;
         public string ArrivalTime { get; set; } = string.Empty;
 
+        // Bus details
+        public string BusNumber { get; set; } = string.Empty;
+        public string BusType { get; set; } = string.Empty;
+        public string OperatorName { get; set; } = string.Empty;
+
+        // Seat numbers
+        public List<string> SeatNumbers { get; set; } = new();
+
         // Promo code details
         public string? PromoCodeUsed { get; set; }
         public decimal DiscountAmount { get; set; }
@@ -59,6 +67,9 @@
         public string? PromoCodeUsed { get; set; }
         public decimal DiscountAmount { get; set; }
         public string PNR { get; set; } = string.Empty;
+
+        // Seat numbers
+        public List<string> SeatNumbers { get; set; } = new();
     }
 
     public class BookingRefundDto
