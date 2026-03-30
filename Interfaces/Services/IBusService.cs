@@ -15,7 +15,6 @@ namespace BusTicketingSystem.Interfaces.Services
             int userId,
             string? ipAddress);
         Task DeleteBusAsync(int id);
-        Task RateBusAsync(int busId, int userId, int rating, string ipAddress);
         Task<(List<BusResponse>, int totalCount)> GetByOperatorAsync(
             string operatorName,
             int pageNumber,

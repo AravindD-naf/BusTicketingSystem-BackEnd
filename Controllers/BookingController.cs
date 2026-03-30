@@ -174,27 +174,6 @@ namespace BusTicketingSystem.Controllers
 
         #endregion
 
-        #region Rating
-
-        [Authorize(Roles = "Customer")]
-        [HttpPost("{bookingId}/rate")]
-        public async Task<IActionResult> RateBus(int bookingId, [FromBody] RateBusRequestDto dto)
-        {
-            var booking = await _bookingService.GetBookingByIdAsync(bookingId);
-            if (booking?.Data == null)
-                return NotFound(ApiResponse<string>.FailureResponse("Booking not found."));
-
-            if (booking.Data.BookingStatus != "Confirmed")
-                return BadRequest(ApiResponse<string>.FailureResponse("You can only rate a confirmed booking."));
-
-            await _busService.RateBusAsync(
-                booking.Data.BusId, GetUserId(), dto.Rating, GetIpAddress());
-
-            return Ok(ApiResponse<string>.SuccessResponse("Rating submitted. Thank you!"));
-        }
-
-        #endregion
-
         #region Passengers
 
         [Authorize(Roles = "Customer")]

@@ -184,29 +184,6 @@ namespace BusTicketingSystem.Services
             );
         }
 
-        public async Task RateBusAsync(int busId, int userId, int rating, string ipAddress)
-        {
-            var bus = await _busRepository.GetByIdAsync(busId);
-            if (bus == null || bus.IsDeleted)
-                throw new NotFoundException("Bus not found.");
-
-            // Simple rolling average — recalculate from scratch would need a Ratings table
-            // For now: weighted update. To do it properly, add a BusRatings table.
-            // Simple approach: update ratingAverage as a weighted moving average
-            var currentRating = bus.RatingAverage;
-            if (currentRating == 0)
-                bus.RatingAverage = rating;
-            else
-                bus.RatingAverage = Math.Round((currentRating + rating) / 2.0, 1);
-
-            bus.UpdatedAt = DateTime.UtcNow;
-            await _busRepository.UpdateAsync(bus);
-
-            await _auditService.LogAsync(userId, "Rate", "Bus", bus.BusId.ToString(),
-                new { previousRating = currentRating },
-                new { newRating = bus.RatingAverage }, ipAddress);
-        }
-
         private static BusResponse MapToResponse(Bus bus)
         {
             return new BusResponse
