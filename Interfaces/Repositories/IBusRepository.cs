@@ -5,7 +5,6 @@ namespace BusTicketingSystem.Interfaces.Repositories
     public interface IBusRepository : IRepository<Bus>
     {
         Task<Bus> CreateAsync(Bus bus);
-        Task<Bus?> GetByIdAsync(int id);
         Task<Bus?> GetByBusNumberAsync(string busNumber);
         Task<List<Bus>> GetAllAsync(int pageNumber, int pageSize);
         Task<(List<Bus> items, int totalCount)> GetPagedAsync(int pageNumber, int pageSize);

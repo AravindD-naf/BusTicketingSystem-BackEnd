@@ -14,7 +14,7 @@ namespace BusTicketingSystem.DTOs.Requests
         // The frontend sends "YYYY-MM-DD". We parse it as UTC date only.
         public string TravelDate { get; set; } = string.Empty;
 
-        // Parsed as UTC date — safe to compare against DB TravelDate
+        // Parsed as UTC date ï¿½ safe to compare against DB TravelDate
         public DateTime TravelDateUtc =>
             DateTime.TryParse(TravelDate, out var d)
                 ? DateTime.SpecifyKind(d.Date, DateTimeKind.Utc)
@@ -27,8 +27,8 @@ namespace BusTicketingSystem.DTOs.Requests
         public List<string>? Operators { get; set; }
         public double? MinRating { get; set; }
         public string? SortBy { get; set; }  // "departure","arrival","price_asc","price_desc","duration","rating"
-        public int PageNumber { get; set; } = 1;
-        public int PageSize { get; set; } = 20;
+        public new int PageNumber { get; set; } = 1;
+        public new int PageSize { get; set; } = 20;
 
     }
 }

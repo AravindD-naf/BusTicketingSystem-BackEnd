@@ -11,7 +11,7 @@ namespace BusTicketingSystem.Repositories
 
         public SeatLockRepository(ApplicationDbContext context) : base(context) { }
 
-        public async Task AddAsync(SeatLock seatLock)
+        public new async Task AddAsync(SeatLock seatLock)
         {
             await _context.SeatLocks.AddAsync(seatLock);
         }
@@ -49,7 +49,7 @@ namespace BusTicketingSystem.Repositories
             await Task.CompletedTask;
         }
 
-        public async Task<SeatLock?> GetByIdAsync(int seatLockId)
+        public new async Task<SeatLock?> GetByIdAsync(int seatLockId)
         {
             return await _context.SeatLocks
                 .Include(sl => sl.Seat)
@@ -99,7 +99,7 @@ namespace BusTicketingSystem.Repositories
                 .ToListAsync();
         }
 
-        public async Task SaveChangesAsync()
+        public new async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
         }

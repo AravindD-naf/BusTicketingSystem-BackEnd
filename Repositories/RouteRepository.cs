@@ -9,7 +9,7 @@ namespace BusTicketingSystem.Repositories
     {
         public RouteRepository(ApplicationDbContext context) : base(context) { }
 
-        public async Task<Models.Route?> GetByIdAsync(int id)
+        public new async Task<Models.Route?> GetByIdAsync(int id)
         {
             return await _context.Routes
                 .FirstOrDefaultAsync(r => r.RouteId == id);
@@ -39,17 +39,17 @@ namespace BusTicketingSystem.Repositories
             return (routes, totalCount);
         }
 
-        public async Task AddAsync(Models.Route route)
+        public new async Task AddAsync(Models.Route route)
         {
             await _context.Routes.AddAsync(route);
         }
 
-        public void Update(Models.Route route)
+        public new void Update(Models.Route route)
         {
             _context.Routes.Update(route);
         }
 
-        public async Task SaveChangesAsync()
+        public new async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
         }

@@ -11,7 +11,7 @@ namespace BusTicketingSystem.Repositories
     {
         public DestinationRepository(ApplicationDbContext context) : base(context) { }
 
-        public async Task<Destination> GetByIdAsync(int id)
+        public new async Task<Destination?> GetByIdAsync(int id)
         {
             return await _context.Destinations
                 .Where(d => d.DestinationId == id && !d.IsDeleted)

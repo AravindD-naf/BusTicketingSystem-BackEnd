@@ -10,7 +10,7 @@ namespace BusTicketingSystem.Repositories
     {
         public BookingRepository(ApplicationDbContext context) : base(context) { }
 
-        public async Task AddAsync(Booking booking)
+        public new async Task AddAsync(Booking booking)
         {
             await _context.Bookings.AddAsync(booking);
         }
@@ -46,7 +46,7 @@ namespace BusTicketingSystem.Repositories
         }
 
 
-        public async Task<Booking?> GetByIdAsync(int bookingId)
+        public new async Task<Booking?> GetByIdAsync(int bookingId)
         {
             return await _context.Bookings
                 .Include(b => b.Schedule)
@@ -77,7 +77,7 @@ namespace BusTicketingSystem.Repositories
                 .ToListAsync();
         }
 
-        public async Task SaveChangesAsync()
+        public new async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
         }

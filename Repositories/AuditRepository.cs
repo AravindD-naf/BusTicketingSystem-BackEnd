@@ -10,7 +10,7 @@ namespace BusTicketingSystem.Repositories
     {
         public AuditRepository(ApplicationDbContext context) : base(context) { }
 
-        public async Task AddAsync(AuditLog log)
+        public new async Task AddAsync(AuditLog log)
         {
             await _context.AuditLogs.AddAsync(log);
             await _context.SaveChangesAsync();
@@ -58,7 +58,7 @@ namespace BusTicketingSystem.Repositories
                 .ToDictionaryAsync(u => u.UserId, u => u.Email);
         }
 
-        public async Task SaveChangesAsync()
+        public new async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
         }

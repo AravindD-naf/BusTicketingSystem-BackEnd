@@ -5,8 +5,8 @@ namespace BusTicketingSystem.Exceptions
     {
         public ResourceNotFoundException(
             string resourceName,
-            string resourceId = null,
-            Exception innerException = null)
+            string? resourceId = null,
+            Exception? innerException = null)
             : base(
                 userMessage: $"{resourceName} not found",
                 errorCode: $"{resourceName.ToUpper()}_NOT_FOUND",
@@ -28,7 +28,7 @@ namespace BusTicketingSystem.Exceptions
         public ConflictException(
             string message,
             string errorCode = "CONFLICT_001",
-            Exception innerException = null)
+            Exception? innerException = null)
             : base(
                 userMessage: message,
                 errorCode: errorCode,
@@ -45,7 +45,7 @@ namespace BusTicketingSystem.Exceptions
         public ValidationException(
             string message,
             string errorCode = "VAL_001",
-            Exception innerException = null)
+            Exception? innerException = null)
             : base(
                 userMessage: message,
                 errorCode: errorCode,
@@ -92,7 +92,7 @@ namespace BusTicketingSystem.Exceptions
         public PaymentOperationException(
             string message,
             PaymentErrorType errorType = PaymentErrorType.ProcessingError,
-            Exception innerException = null)
+            Exception? innerException = null)
             : base(
                 userMessage: message,
                 errorCode: $"PAYMENT_{errorType}",
@@ -133,7 +133,7 @@ namespace BusTicketingSystem.Exceptions
         public RefundOperationException(
             string message,
             RefundErrorType errorType = RefundErrorType.ProcessingError,
-            Exception innerException = null)
+            Exception? innerException = null)
             : base(
                 userMessage: message,
                 errorCode: $"REFUND_{errorType}",
@@ -177,7 +177,7 @@ namespace BusTicketingSystem.Exceptions
         public SeatOperationException(
             string message,
             SeatErrorType errorType = SeatErrorType.InvalidLockOperation,
-            Exception innerException = null)
+            Exception? innerException = null)
             : base(
                 userMessage: message,
                 errorCode: $"SEAT_{errorType}",
@@ -222,7 +222,7 @@ namespace BusTicketingSystem.Exceptions
         public BookingOperationException(
             string message,
             BookingErrorType errorType = BookingErrorType.InvalidBooking,
-            Exception innerException = null)
+            Exception? innerException = null)
             : base(
                 userMessage: message,
                 errorCode: $"BOOKING_{errorType}",
@@ -255,7 +255,7 @@ namespace BusTicketingSystem.Exceptions
     {
         public ConcurrencyException(
             string message = "Resource has been modified by another user",
-            Exception innerException = null)
+            Exception? innerException = null)
             : base(
                 userMessage: message,
                 errorCode: "CONCURRENCY_001",
@@ -271,7 +271,7 @@ namespace BusTicketingSystem.Exceptions
     {
         public DatabaseException(
             string message = "A database error occurred",
-            Exception innerException = null)
+            Exception? innerException = null)
             : base(
                 userMessage: "An error occurred while processing your request",
                 errorCode: "DB_ERROR_001",
@@ -290,7 +290,7 @@ namespace BusTicketingSystem.Exceptions
         public ExternalServiceException(
             string serviceName,
             string message = "External service unavailable",
-            Exception innerException = null)
+            Exception? innerException = null)
             : base(
                 userMessage: "Service temporarily unavailable",
                 errorCode: "SERVICE_UNAVAILABLE",
@@ -308,7 +308,7 @@ namespace BusTicketingSystem.Exceptions
     {
         public OperationTimeoutException(
             string message = "Operation timed out",
-            Exception innerException = null)
+            Exception? innerException = null)
             : base(
                 userMessage: "The operation took too long to complete. Please try again.",
                 errorCode: "TIMEOUT_001",

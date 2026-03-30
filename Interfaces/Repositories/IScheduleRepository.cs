@@ -6,10 +6,8 @@ namespace BusTicketingSystem.Interfaces.Repositories
 {
     public interface IScheduleRepository : IRepository<Schedule>
     {
-        Task<Schedule?> GetByIdAsync(int id);
         Task<(IEnumerable<Schedule> schedules, int totalCount)>GetPagedAsync(int pageNumber, int pageSize, string? keyword = null);
         Task<bool> ExistsAsync(int busId, DateTime travelDate, TimeSpan departureTime);
-        Task UpdateAsync(Schedule schedule);
         Task<bool> ExistsForUpdateAsync(int busId, int routeId, DateTime travelDate, TimeSpan departureTime, int currentScheduleId);
         Task<List<Schedule>> GetByFromCityAsync(string fromCity);
         Task<List<Schedule>> GetByToCityAsync(string toCity);
@@ -18,6 +16,7 @@ namespace BusTicketingSystem.Interfaces.Repositories
         // Add these two methods
         Task<bool> HasActiveBookingsForBusAsync(int busId);
         Task<bool> HasActiveBookingsForRouteAsync(int routeId);
+        Task UpdateAsync(Schedule schedule);
 
         Task<IDbContextTransaction> BeginTransactionAsync();
         Task<bool> HasOverlappingScheduleAsync(int busId, DateTime travelDate, TimeSpan departureTime, TimeSpan arrivalTime, bool isOvernight, int? excludeScheduleId = null);

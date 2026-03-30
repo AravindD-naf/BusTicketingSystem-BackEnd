@@ -47,7 +47,7 @@ namespace BusTicketingSystem.Repositories
             return (items, totalCount);
         }
 
-        public async Task<Bus?> GetByIdAsync(int id)
+        public new async Task<Bus?> GetByIdAsync(int id)
         {
             return await _context.Buses
                 .FirstOrDefaultAsync(b => b.BusId == id && !b.IsDeleted);

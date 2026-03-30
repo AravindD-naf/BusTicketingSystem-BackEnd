@@ -9,9 +9,9 @@ namespace BusTicketingSystem.Repositories
     {
         public PaymentRepository(ApplicationDbContext context) : base(context) { }
 
-        public async Task AddAsync(Payment payment) => await _context.Payments.AddAsync(payment);
+        public new async Task AddAsync(Payment payment) => await _context.Payments.AddAsync(payment);
 
-        public async Task<Payment?> GetByIdAsync(int paymentId) =>
+        public new async Task<Payment?> GetByIdAsync(int paymentId) =>
             await _context.Payments
                 .Include(p => p.Booking)
                 .FirstOrDefaultAsync(p => p.PaymentId == paymentId && !p.IsDeleted);
@@ -34,16 +34,16 @@ namespace BusTicketingSystem.Repositories
 
         public async Task UpdateAsync(Payment payment) => _context.Payments.Update(payment);
 
-        public async Task SaveChangesAsync() => await _context.SaveChangesAsync();
+        public new async Task SaveChangesAsync() => await _context.SaveChangesAsync();
     }
 
     public class RefundRepository : Repository<Refund>, IRefundRepository
     {
         public RefundRepository(ApplicationDbContext context) : base(context) { }
 
-        public async Task AddAsync(Refund refund) => await _context.Refunds.AddAsync(refund);
+        public new async Task AddAsync(Refund refund) => await _context.Refunds.AddAsync(refund);
 
-        public async Task<Refund?> GetByIdAsync(int refundId) =>
+        public new async Task<Refund?> GetByIdAsync(int refundId) =>
             await _context.Refunds
                 .FirstOrDefaultAsync(r => r.RefundId == refundId && !r.IsDeleted);
 
@@ -58,21 +58,21 @@ namespace BusTicketingSystem.Repositories
 
         public async Task UpdateAsync(Refund refund) => _context.Refunds.Update(refund);
 
-        public async Task SaveChangesAsync() => await _context.SaveChangesAsync();
+        public new async Task SaveChangesAsync() => await _context.SaveChangesAsync();
     }
 
     public class PassengerRepository : Repository<Passenger>, IPassengerRepository
     {
         public PassengerRepository(ApplicationDbContext context) : base(context) { }
 
-        public async Task AddAsync(Passenger passenger) => await _context.Passengers.AddAsync(passenger);
+        public new async Task AddAsync(Passenger passenger) => await _context.Passengers.AddAsync(passenger);
 
         public async Task AddManyAsync(IEnumerable<Passenger> passengers)
         {
             await _context.Passengers.AddRangeAsync(passengers);
         }
 
-        public async Task<Passenger?> GetByIdAsync(int passengerId) =>
+        public new async Task<Passenger?> GetByIdAsync(int passengerId) =>
             await _context.Passengers
                 .FirstOrDefaultAsync(p => p.PassengerId == passengerId && !p.IsDeleted);
 
@@ -94,7 +94,7 @@ namespace BusTicketingSystem.Repositories
             }
         }
 
-        public async Task SaveChangesAsync() => await _context.SaveChangesAsync();
+        public new async Task SaveChangesAsync() => await _context.SaveChangesAsync();
     }
 
     public class CancellationPolicyRepository : Repository<CancellationPolicy>, ICancellationPolicyRepository
@@ -111,12 +111,12 @@ namespace BusTicketingSystem.Repositories
             await _context.CancellationPolicies
                 .FirstOrDefaultAsync(p => p.HoursBeforeDeparture == hours && p.IsActive);
 
-        public async Task AddAsync(CancellationPolicy policy) =>
+        public new async Task AddAsync(CancellationPolicy policy) =>
             await _context.CancellationPolicies.AddAsync(policy);
 
         public async Task UpdateAsync(CancellationPolicy policy) =>
             _context.CancellationPolicies.Update(policy);
 
-        public async Task SaveChangesAsync() => await _context.SaveChangesAsync();
+        public new async Task SaveChangesAsync() => await _context.SaveChangesAsync();
     }
 }

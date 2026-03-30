@@ -19,7 +19,7 @@ namespace BusTicketingSystem.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Seat?> GetByIdAsync(int seatId)
+        public new async Task<Seat?> GetByIdAsync(int seatId)
         {
             return await _context.Seats
                 .Include(s => s.Schedule)
@@ -43,7 +43,7 @@ namespace BusTicketingSystem.Repositories
                                     !s.IsDeleted);
         }
 
-        public async Task AddAsync(Seat seat)
+        public new async Task AddAsync(Seat seat)
         {
             await _context.Seats.AddAsync(seat);
         }
@@ -102,7 +102,7 @@ namespace BusTicketingSystem.Repositories
             return expiredSeats.Count;
         }
 
-        public async Task SaveChangesAsync()
+        public new async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
         }

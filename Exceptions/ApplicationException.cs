@@ -14,7 +14,7 @@ namespace BusTicketingSystem.Exceptions
 
         public string UserMessage { get; set; }
 
-        public string InternalMessage { get; set; }
+        public string? InternalMessage { get; set; }
 
         public Dictionary<string, string> Errors { get; set; }
 
@@ -26,8 +26,8 @@ namespace BusTicketingSystem.Exceptions
             string userMessage,
             string errorCode = "ERROR_001",
             int statusCode = 500,
-            string internalMessage = null,
-            Exception innerException = null)
+            string? internalMessage = null,
+            Exception? innerException = null)
             : base(userMessage, innerException)
         {
             UserMessage = userMessage;

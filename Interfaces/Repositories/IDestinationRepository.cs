@@ -4,7 +4,7 @@ namespace BusTicketingSystem.Interfaces.Repositories
 {
     public interface IDestinationRepository : IRepository<Destination>
     {
-        Task<Destination> GetByIdAsync(int id);
+        new Task<Destination?> GetByIdAsync(int id);
         Task<List<Destination>> GetAllAsync(int pageNumber, int pageSize);
         Task<List<Destination>> GetByCityAsync(string cityName);
         Task<(List<Destination> items, int totalCount)> GetPagedAsync(int pageNumber, int pageSize);

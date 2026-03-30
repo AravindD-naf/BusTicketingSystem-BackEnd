@@ -12,12 +12,12 @@ namespace BusTicketingSystem.Repositories
     {
         public ScheduleRepository(ApplicationDbContext context) : base(context) { }
 
-        public async Task AddAsync(Schedule schedule)
+        public new async Task AddAsync(Schedule schedule)
         {
             await _context.Schedules.AddAsync(schedule);
         }
 
-        public async Task<Schedule?> GetByIdAsync(int id)
+        public new async Task<Schedule?> GetByIdAsync(int id)
         {
             return await _context.Schedules
                 .Include(s => s.Route)
@@ -88,7 +88,7 @@ namespace BusTicketingSystem.Repositories
             return Task.CompletedTask;
         }
 
-        public async Task SaveChangesAsync()
+        public new async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
         }
