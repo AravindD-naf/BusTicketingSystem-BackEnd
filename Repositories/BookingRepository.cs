@@ -95,6 +95,7 @@ namespace BusTicketingSystem.Repositories
                     .ThenInclude(s => s.Bus)
                 .Include(b => b.Refund)
                 .Include(b => b.Seats)
+                .Include(b => b.BusRating)
                 .Where(b => b.UserId == userId && !b.IsDeleted)
                 .OrderByDescending(b => b.BookingDate)
                 .ToListAsync();

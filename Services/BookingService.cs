@@ -5,6 +5,8 @@ using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Interfaces.Services;
 using BusTicketingSystem.Models;
 using BusTicketingSystem.Models.Enums;
+using BusTicketingSystem.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Services
 {
@@ -15,6 +17,7 @@ namespace BusTicketingSystem.Services
         private readonly ISeatRepository _seatRepository;
         private readonly IAuditRepository _auditRepository;
         private readonly IPaymentService _paymentService;
+        private readonly ApplicationDbContext _context;
 
         public BookingService(
             IBookingRepository bookingRepository,
@@ -22,13 +25,15 @@ namespace BusTicketingSystem.Services
             ISeatRepository seatRepository,
             ISeatService seatService,
             IAuditRepository auditRepository,
-            IPaymentService paymentService)
+            IPaymentService paymentService,
+            ApplicationDbContext context)
         {
             _bookingRepository = bookingRepository;
             _scheduleRepository = scheduleRepository;
             _seatRepository = seatRepository;
             _auditRepository = auditRepository;
             _paymentService = paymentService;
+            _context = context;
         }
 
 
@@ -408,8 +413,65 @@ namespace BusTicketingSystem.Services
                 SeatNumbers = b.Seats?.Select(s => s.SeatNumber).OrderBy(s => s).ToList() ?? new List<string>(),
                 PromoCodeUsed = b.PromoCodeUsed,
                 DiscountAmount = b.DiscountAmount,
-                PNR = b.PNR ?? string.Empty
+                PNR = b.PNR ?? string.Empty,
+                HasRated = b.BusRating != null
             };
+        }
+
+        public async Task<ApiResponse<bool>> RateBookingAsync(int bookingId, int userId, int rating)
+        {
+            if (rating < 1 || rating > 5)
+                throw ValidationException.ForField("rating", "Rating must be between 1 and 5");
+
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+
+            if (booking == null || booking.IsDeleted)
+                throw new ResourceNotFoundException("Booking", bookingId.ToString());
+
+            if (booking.UserId != userId)
+                throw new BookingOperationException(
+                    "You are not authorized to rate this booking.",
+                    BookingOperationException.BookingErrorType.InvalidBooking);
+
+            if (booking.BookingStatus != BookingStatus.Confirmed)
+                throw new BookingOperationException(
+                    "Only confirmed bookings can be rated.",
+                    BookingOperationException.BookingErrorType.InvalidBookingStatus);
+
+            // Prevent duplicate ratings
+            var existing = await _context.BusRatings
+                .FirstOrDefaultAsync(r => r.BookingId == bookingId);
+            if (existing != null)
+                throw new BookingOperationException(
+                    "You have already rated this booking.",
+                    BookingOperationException.BookingErrorType.InvalidBooking);
+
+            var schedule = await _scheduleRepository.GetByIdAsync(booking.ScheduleId);
+            if (schedule?.Bus == null)
+                throw new ResourceNotFoundException("Bus", "for this booking");
+
+            // Save the rating
+            var busRating = new BusRating
+            {
+                BookingId = bookingId,
+                BusId = schedule.Bus.BusId,
+                UserId = userId,
+                Rating = rating,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _context.BusRatings.AddAsync(busRating);
+            await _context.SaveChangesAsync();
+
+            // Recalculate average from all ratings for this bus
+            var avg = await _context.BusRatings
+                .Where(r => r.BusId == schedule.Bus.BusId)
+                .AverageAsync(r => (double)r.Rating);
+
+            schedule.Bus.RatingAverage = Math.Round(avg, 1);
+            schedule.Bus.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return ApiResponse<bool>.SuccessResponse(true);
         }
 
         private static string GeneratePNR()

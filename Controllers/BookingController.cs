@@ -143,6 +143,14 @@ namespace BusTicketingSystem.Controllers
             return Ok(result);
         }
 
+        [Authorize(Roles = "Customer")]
+        [HttpPost("{id}/rate")]
+        public async Task<IActionResult> Rate(int id, [FromBody] RateBookingRequestDto dto)
+        {
+            var result = await _bookingService.RateBookingAsync(id, GetUserId(), dto.Rating);
+            return Ok(result);
+        }
+
         #endregion
 
         #region Payment

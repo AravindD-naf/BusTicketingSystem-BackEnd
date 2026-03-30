@@ -31,6 +31,9 @@
         public string? PromoCodeUsed { get; set; }
         public decimal DiscountAmount { get; set; }
         public string PNR { get; set; } = string.Empty;
+
+        // Whether the user has already rated this booking's bus
+        public bool HasRated { get; set; } = false;
     }
 
     public class BookingDetailResponseDto

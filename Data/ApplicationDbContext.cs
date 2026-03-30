@@ -36,6 +36,7 @@ namespace BusTicketingSystem.Data
         public DbSet<Wallet> Wallets { get; set; }
         public DbSet<WalletTransaction> WalletTransactions { get; set; }
         public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<BusRating> BusRatings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -170,6 +171,28 @@ namespace BusTicketingSystem.Data
                     .WithMany()
                     .HasForeignKey(m => m.ReceiverId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // BusRating — restrict cascade to avoid multiple cascade paths
+            modelBuilder.Entity<BusRating>(entity =>
+            {
+                entity.HasOne(r => r.Booking)
+                    .WithOne(b => b.BusRating)
+                    .HasForeignKey<BusRating>(r => r.BookingId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(r => r.Bus)
+                    .WithMany(b => b.Ratings)
+                    .HasForeignKey(r => r.BusId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(r => r.User)
+                    .WithMany()
+                    .HasForeignKey(r => r.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // One rating per booking
+                entity.HasIndex(r => r.BookingId).IsUnique();
             });
         }
     }

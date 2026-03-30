@@ -25,5 +25,10 @@ namespace BusTicketingSystem.Interfaces.Services
             int userId,
             string role,
             string ipAddress);
+
+        Task<ApiResponse<bool>> RateBookingAsync(
+            int bookingId,
+            int userId,
+            int rating);
     }
 }

@@ -63,5 +63,6 @@ namespace BusTicketingSystem.Models
         public virtual Refund? Refund { get; set; }
         public virtual ICollection<Passenger> Passengers { get; set; } = new List<Passenger>();
         public virtual ICollection<Seat> Seats { get; set; } = new List<Seat>();
+        public virtual BusRating? BusRating { get; set; }
     }
 }

@@ -31,5 +31,7 @@ namespace BusTicketingSystem.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }
+
+        public virtual ICollection<BusRating> Ratings { get; set; } = new List<BusRating>();
     }
 }
