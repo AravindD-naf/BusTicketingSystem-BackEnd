@@ -57,6 +57,8 @@ namespace BusTicketingSystem.Models
      
         public int? Age { get; set; }
 
+        [MaxLength(10)]
+        public string? Gender { get; set; }
 
         [MaxLength(500)]
         public string SpecialRequirements { get; set; } = string.Empty;

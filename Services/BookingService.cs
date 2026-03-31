@@ -127,17 +127,28 @@ namespace BusTicketingSystem.Services
                     {
                         var seat = seats.FirstOrDefault(s => s.SeatNumber == p.SeatNumber);
                         if (seat == null) continue;
+
+                        // Resolve name: prefer explicit FirstName, fall back to single Name field
+                        var fullName  = (p.Name ?? "").Trim();
+                        var firstName = !string.IsNullOrWhiteSpace(p.FirstName)
+                            ? p.FirstName.Trim()
+                            : (fullName.Contains(' ') ? fullName[..fullName.IndexOf(' ')] : fullName);
+                        var lastName  = !string.IsNullOrWhiteSpace(p.LastName)
+                            ? p.LastName.Trim()
+                            : (fullName.Contains(' ') ? fullName[(fullName.IndexOf(' ') + 1)..] : "");
+
                         passengers.Add(new Passenger
                         {
-                            BookingId = booking.BookingId,
-                            SeatId = seat.SeatId,
-                            SeatNumber = p.SeatNumber,
-                            FirstName = (p.FirstName ?? p.Name?.Split(' ').FirstOrDefault() ?? "").Trim(),
-                            LastName = (p.LastName ?? (p.Name?.Contains(' ') == true ? p.Name.Substring(p.Name.IndexOf(' ') + 1) : "")).Trim(),
+                            BookingId   = booking.BookingId,
+                            SeatId      = seat.SeatId,
+                            SeatNumber  = p.SeatNumber,
+                            FirstName   = firstName,
+                            LastName    = lastName,
+                            Gender      = p.Gender,
                             PhoneNumber = dto.ContactPhone ?? "",
-                            Email = dto.ContactEmail ?? "",
-                            Age = p.Age,
-                            CreatedAt = DateTime.UtcNow
+                            Email       = dto.ContactEmail ?? "",
+                            Age         = p.Age,
+                            CreatedAt   = DateTime.UtcNow
                         });
                     }
                     if (passengers.Count > 0)
@@ -462,7 +473,8 @@ namespace BusTicketingSystem.Services
                 {
                     SeatNumber = p.SeatNumber,
                     Name = $"{p.FirstName} {p.LastName}".Trim(),
-                    Age = p.Age ?? 0
+                    Age = p.Age ?? 0,
+                    Gender = p.Gender
                 }).ToList() ?? new List<PassengerSummaryDto>()
             };
         }
