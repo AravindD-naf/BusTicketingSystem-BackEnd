@@ -309,7 +309,8 @@ namespace BusTicketingSystem.Services
                 {
                     SeatNumber = p.SeatNumber,
                     Name = $"{p.FirstName} {p.LastName}".Trim(),
-                    Age = p.Age ?? 0
+                    Age = p.Age ?? 0,
+                    Gender = p.Gender
                 }).ToList() ?? new List<PassengerSummaryDto>()
             };
 
