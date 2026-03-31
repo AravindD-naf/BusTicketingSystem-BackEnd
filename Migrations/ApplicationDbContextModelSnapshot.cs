@@ -58,7 +58,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("AuditId");
 
-                    b.ToTable("AuditLogs");
+                    b.ToTable("AuditLogs", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Booking", b =>
@@ -137,7 +137,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Bookings");
+                    b.ToTable("Bookings", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Bus", b =>
@@ -186,7 +186,7 @@ namespace BusTicketingSystem.Migrations
                     b.HasIndex("BusNumber")
                         .IsUnique();
 
-                    b.ToTable("Buses");
+                    b.ToTable("Buses", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.BusRating", b =>
@@ -221,7 +221,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("BusRatings");
+                    b.ToTable("BusRatings", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.CancellationPolicy", b =>
@@ -262,7 +262,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("PolicyId");
 
-                    b.ToTable("CancellationPolicies");
+                    b.ToTable("CancellationPolicies", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.ChatMessage", b =>
@@ -299,7 +299,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("ChatMessages");
+                    b.ToTable("ChatMessages", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Destination", b =>
@@ -334,7 +334,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("DestinationId");
 
-                    b.ToTable("Destinations");
+                    b.ToTable("Destinations", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.ErrorLog", b =>
@@ -440,7 +440,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("ErrorLogId");
 
-                    b.ToTable("ErrorLogs");
+                    b.ToTable("ErrorLogs", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Passenger", b =>
@@ -519,7 +519,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("SeatId");
 
-                    b.ToTable("Passengers");
+                    b.ToTable("Passengers", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Payment", b =>
@@ -571,7 +571,7 @@ namespace BusTicketingSystem.Migrations
                     b.HasIndex("BookingId")
                         .IsUnique();
 
-                    b.ToTable("Payments");
+                    b.ToTable("Payments", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.PromoCode", b =>
@@ -619,7 +619,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("PromoCodeId");
 
-                    b.ToTable("PromoCodes");
+                    b.ToTable("PromoCodes", (string)null);
 
                     b.HasData(
                         new
@@ -747,7 +747,7 @@ namespace BusTicketingSystem.Migrations
                     b.HasIndex("PaymentId")
                         .IsUnique();
 
-                    b.ToTable("Refunds");
+                    b.ToTable("Refunds", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Role", b =>
@@ -764,7 +764,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("RoleId");
 
-                    b.ToTable("Roles");
+                    b.ToTable("Roles", (string)null);
 
                     b.HasData(
                         new
@@ -830,7 +830,7 @@ namespace BusTicketingSystem.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Routes");
+                    b.ToTable("Routes", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Schedule", b =>
@@ -900,7 +900,7 @@ namespace BusTicketingSystem.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Schedules");
+                    b.ToTable("Schedules", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Seat", b =>
@@ -950,7 +950,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("ScheduleId");
 
-                    b.ToTable("Seats");
+                    b.ToTable("Seats", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.SeatLock", b =>
@@ -988,7 +988,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("SeatLocks");
+                    b.ToTable("SeatLocks", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Source", b =>
@@ -1023,7 +1023,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("SourceId");
 
-                    b.ToTable("Sources");
+                    b.ToTable("Sources", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.User", b =>
@@ -1072,7 +1072,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
 
                     b.HasData(
                         new
@@ -1114,7 +1114,7 @@ namespace BusTicketingSystem.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Wallets");
+                    b.ToTable("Wallets", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.WalletTransaction", b =>
@@ -1153,7 +1153,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("WalletId");
 
-                    b.ToTable("WalletTransactions");
+                    b.ToTable("WalletTransactions", (string)null);
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Booking", b =>

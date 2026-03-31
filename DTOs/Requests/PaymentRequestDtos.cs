@@ -9,28 +9,12 @@ namespace BusTicketingSystem.DTOs.Requests
         public string? PromoCode { get; set; }
     }
 
-
-    //public class ProcessPaymentRequestDto
-    //{
-    //    public int BookingId { get; set; }
-    //    public string PaymentMethod { get; set; } = string.Empty; 
-    //    public decimal Amount { get; set; }
-    //}
-
-
     public class ConfirmPaymentRequestDto
     {
         public int PaymentId { get; set; }
         public string TransactionId { get; set; } = string.Empty;
         public bool IsSuccess { get; set; }
         public string FailureReason { get; set; } = string.Empty;
-    }
-
-
-    public class CancelBookingWithRefundRequestDto
-    {
-        public int BookingId { get; set; }
-        public string CancellationReason { get; set; } = string.Empty;
     }
 
 
