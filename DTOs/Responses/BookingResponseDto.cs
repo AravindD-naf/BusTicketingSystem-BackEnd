@@ -34,6 +34,17 @@
 
         // Whether the user has already rated this booking's bus
         public bool HasRated { get; set; } = false;
+
+        // Boarding & drop points
+        public string? BoardingPointName { get; set; }
+        public string? DropPointName { get; set; }
+
+        // Contact details
+        public string? ContactPhone { get; set; }
+        public string? ContactEmail { get; set; }
+
+        // Passenger details
+        public List<PassengerSummaryDto> Passengers { get; set; } = new();
     }
 
     public class BookingDetailResponseDto
@@ -73,6 +84,25 @@
 
         // Seat numbers
         public List<string> SeatNumbers { get; set; } = new();
+
+        // Boarding & drop points
+        public string? BoardingPointName { get; set; }
+        public string? DropPointName { get; set; }
+
+        // Contact details
+        public string? ContactPhone { get; set; }
+        public string? ContactEmail { get; set; }
+
+        // Passenger details
+        public List<PassengerSummaryDto> Passengers { get; set; } = new();
+    }
+
+    public class PassengerSummaryDto
+    {
+        public string SeatNumber { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public int Age { get; set; }
+        public string? Gender { get; set; }
     }
 
     public class BookingRefundDto

@@ -101,23 +101,52 @@ namespace BusTicketingSystem.Services
                     TotalAmount = totalAmount,
                     BookingStatus = BookingStatus.Pending,
                     BookingDate = DateTime.UtcNow,
-                    PNR = GeneratePNR()
+                    PNR = GeneratePNR(),
+                    BoardingPointName = dto.BoardingPointName,
+                    DropPointName = dto.DropPointName,
+                    ContactPhone = dto.ContactPhone,
+                    ContactEmail = dto.ContactEmail
                 };
 
                 await _bookingRepository.AddAsync(booking);
                 await _bookingRepository.SaveChangesAsync();
 
-                // ── KEY CHANGE ──
                 // Link BookingId to seats but keep SeatStatus as "Locked"
-                // Seats only move to "Booked" after payment is confirmed
                 foreach (var seat in seats)
                 {
                     seat.BookingId = booking.BookingId;
                     seat.UpdatedAt = DateTime.UtcNow;
                 }
                 await _seatRepository.UpdateManyAsync(seats);
+
+                // Save passenger details if provided
+                if (dto.Passengers != null && dto.Passengers.Count > 0)
+                {
+                    var passengers = new List<Passenger>();
+                    foreach (var p in dto.Passengers)
+                    {
+                        var seat = seats.FirstOrDefault(s => s.SeatNumber == p.SeatNumber);
+                        if (seat == null) continue;
+                        passengers.Add(new Passenger
+                        {
+                            BookingId = booking.BookingId,
+                            SeatId = seat.SeatId,
+                            SeatNumber = p.SeatNumber,
+                            FirstName = (p.FirstName ?? p.Name?.Split(' ').FirstOrDefault() ?? "").Trim(),
+                            LastName = (p.LastName ?? (p.Name?.Contains(' ') == true ? p.Name.Substring(p.Name.IndexOf(' ') + 1) : "")).Trim(),
+                            PhoneNumber = dto.ContactPhone ?? "",
+                            Email = dto.ContactEmail ?? "",
+                            Age = p.Age,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                    if (passengers.Count > 0)
+                    {
+                        await _context.Passengers.AddRangeAsync(passengers);
+                    }
+                }
+
                 await _seatRepository.SaveChangesAsync();
-                // ────────────────
 
                 // AvailableSeats count stays the same until payment is confirmed
                 // so we do NOT decrement schedule.AvailableSeats here
@@ -260,7 +289,17 @@ namespace BusTicketingSystem.Services
                 PromoCodeUsed = booking.PromoCodeUsed,
                 DiscountAmount = booking.DiscountAmount,
                 PNR = booking.PNR ?? string.Empty,
-                SeatNumbers = bookingSeats
+                SeatNumbers = bookingSeats,
+                BoardingPointName = booking.BoardingPointName,
+                DropPointName = booking.DropPointName,
+                ContactPhone = booking.ContactPhone,
+                ContactEmail = booking.ContactEmail,
+                Passengers = booking.Passengers?.Select(p => new PassengerSummaryDto
+                {
+                    SeatNumber = p.SeatNumber,
+                    Name = $"{p.FirstName} {p.LastName}".Trim(),
+                    Age = p.Age ?? 0
+                }).ToList() ?? new List<PassengerSummaryDto>()
             };
 
             return ApiResponse<BookingDetailResponseDto>
@@ -414,7 +453,17 @@ namespace BusTicketingSystem.Services
                 PromoCodeUsed = b.PromoCodeUsed,
                 DiscountAmount = b.DiscountAmount,
                 PNR = b.PNR ?? string.Empty,
-                HasRated = b.BusRating != null
+                HasRated = b.BusRating != null,
+                BoardingPointName = b.BoardingPointName,
+                DropPointName = b.DropPointName,
+                ContactPhone = b.ContactPhone,
+                ContactEmail = b.ContactEmail,
+                Passengers = b.Passengers?.Select(p => new PassengerSummaryDto
+                {
+                    SeatNumber = p.SeatNumber,
+                    Name = $"{p.FirstName} {p.LastName}".Trim(),
+                    Age = p.Age ?? 0
+                }).ToList() ?? new List<PassengerSummaryDto>()
             };
         }
 

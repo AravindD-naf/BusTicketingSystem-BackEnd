@@ -56,6 +56,20 @@ namespace BusTicketingSystem.Models
         [Column(TypeName = "decimal(10,2)")]
         public decimal DiscountAmount { get; set; } = 0;
 
+        // Boarding & drop points
+        [MaxLength(200)]
+        public string? BoardingPointName { get; set; }
+
+        [MaxLength(200)]
+        public string? DropPointName { get; set; }
+
+        // Contact details
+        [MaxLength(20)]
+        public string? ContactPhone { get; set; }
+
+        [MaxLength(200)]
+        public string? ContactEmail { get; set; }
+
         public bool IsDeleted { get; set; } = false;
 
         // Navigation properties

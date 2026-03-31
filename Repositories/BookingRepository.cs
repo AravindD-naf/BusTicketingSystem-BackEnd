@@ -55,6 +55,7 @@ namespace BusTicketingSystem.Repositories
                     .ThenInclude(s => s.Bus)
                 .Include(b => b.User)
                 .Include(b => b.Seats)
+                .Include(b => b.Passengers)
                 .FirstOrDefaultAsync(b =>
                     b.BookingId == bookingId &&
                     !b.IsDeleted);
@@ -96,6 +97,7 @@ namespace BusTicketingSystem.Repositories
                 .Include(b => b.Refund)
                 .Include(b => b.Seats)
                 .Include(b => b.BusRating)
+                .Include(b => b.Passengers)
                 .Where(b => b.UserId == userId && !b.IsDeleted)
                 .OrderByDescending(b => b.BookingDate)
                 .ToListAsync();

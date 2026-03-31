@@ -51,8 +51,11 @@ namespace BusTicketingSystem.DTOs.Requests
     public class PassengerDetailDto
     {
         public string SeatNumber { get; set; } = string.Empty;
+        // Frontend sends "name" as a single field; FirstName/LastName for the separate-field API
+        public string? Name { get; set; }
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
+        public string? Gender { get; set; }
         public string PhoneNumber { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string IdType { get; set; } = string.Empty;
