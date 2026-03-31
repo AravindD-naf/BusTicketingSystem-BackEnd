@@ -5,11 +5,7 @@ using BusTicketingSystem.Exceptions;
 using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Interfaces.Services;
 using BusTicketingSystem.Models;
-using BusTicketingSystem.Repositories;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 
 namespace BusTicketingSystem.Services
 {
@@ -20,7 +16,6 @@ namespace BusTicketingSystem.Services
         private readonly IBusRepository _busRepository;
         private readonly IAuditRepository _auditRepository;
         private readonly ISeatRepository _seatRepository;
-        private readonly JsonSerializerOptions _jsonOptions;
 
         public ScheduleService(
             IScheduleRepository scheduleRepository,
@@ -33,11 +28,6 @@ namespace BusTicketingSystem.Services
             _routeRepository = routeRepository;
             _busRepository = busRepository;
             _auditRepository = auditRepository;
-            _jsonOptions = new JsonSerializerOptions
-            {
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                WriteIndented = false
-            };
             _seatRepository = seatRepository;
         }
 
@@ -381,31 +371,6 @@ namespace BusTicketingSystem.Services
             }
             await _scheduleRepository.SaveChangesAsync();
         }
-
-        // REPLACE the existing SearchSchedulesAsync method with:
-        //public async Task<ApiResponse<PagedResponse<ScheduleResponseDto>>> SearchSchedulesAsync(ScheduleSearchRequest request)
-        //{
-        //    // Mark past schedules inactive before returning results
-        //    await MarkPastSchedulesInactiveAsync();
-        //    var (items, totalCount) = await _scheduleRepository.SearchSchedulesAsync(request);
-
-        //    //var (schedules, totalCount) = await _scheduleRepository.SearchSchedulesAsync(request);
-
-        //    // Sync stale AvailableSeats counter before returning
-        //    await SyncAvailableSeatsAsync(schedules);
-
-        //    var mapped = schedules.Select(MapToDto).ToList();
-
-        //    var paged = new PagedResponse<ScheduleResponseDto>
-        //    {
-        //        Items = mapped,
-        //        TotalCount = totalCount,
-        //        PageNumber = request.PageNumber,
-        //        PageSize = request.PageSize
-        //    };
-
-        //    return ApiResponse<PagedResponse<ScheduleResponseDto>>.SuccessResponse(paged);
-        //}
 
         public async Task<ApiResponse<PagedResponse<ScheduleResponseDto>>>
             SearchSchedulesAsync(ScheduleSearchRequest request)
