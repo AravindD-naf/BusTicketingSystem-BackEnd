@@ -228,15 +228,34 @@ namespace BusTicketingSystem.Services
         public async Task<ApiResponse<List<BookingResponseDto>>>
             GetMyBookingsAsync(int userId)
         {
-            // Trigger cleanup so My Bookings page always shows updated statuses
             await CleanupExpiredBookingsAsync();
             await _scheduleRepository.MarkPastSchedulesInactiveAsync();
 
             var bookings = await _bookingRepository.GetByUserIdWithRefundAsync(userId);
             var totalCount = await _bookingRepository.GetTotalCountByUserIdAsync(userId);
 
-            var result = ApiResponse<List<BookingResponseDto>>
-                .SuccessResponse(bookings.Select(MapToDto).ToList());
+            // Load all passengers for these bookings in one query to ensure Gender is fresh
+            var bookingIds = bookings.Select(b => b.BookingId).ToList();
+            var allPassengers = await _context.Passengers
+                .Where(p => bookingIds.Contains(p.BookingId) && !p.IsDeleted)
+                .ToListAsync();
+
+            var dtos = bookings.Select(b =>
+            {
+                var dto = MapToDto(b);
+                dto.Passengers = allPassengers
+                    .Where(p => p.BookingId == b.BookingId)
+                    .Select(p => new PassengerSummaryDto
+                    {
+                        SeatNumber = p.SeatNumber,
+                        Name = $"{p.FirstName} {p.LastName}".Trim(),
+                        Age = p.Age ?? 0,
+                        Gender = p.Gender
+                    }).ToList();
+                return dto;
+            }).ToList();
+
+            var result = ApiResponse<List<BookingResponseDto>>.SuccessResponse(dtos);
             result.TotalCount = totalCount;
             return result;
         }
@@ -270,6 +289,11 @@ namespace BusTicketingSystem.Services
                 .Select(s => s.SeatNumber)
                 .OrderBy(s => s)
                 .ToList();
+
+            // Query passengers directly to ensure Gender and all fields are loaded fresh
+            var passengers = await _context.Passengers
+                .Where(p => p.BookingId == booking.BookingId && !p.IsDeleted)
+                .ToListAsync();
 
             var bookingDetail = new BookingDetailResponseDto
             {
@@ -305,13 +329,13 @@ namespace BusTicketingSystem.Services
                 DropPointName = booking.DropPointName,
                 ContactPhone = booking.ContactPhone,
                 ContactEmail = booking.ContactEmail,
-                Passengers = booking.Passengers?.Select(p => new PassengerSummaryDto
+                Passengers = passengers.Select(p => new PassengerSummaryDto
                 {
                     SeatNumber = p.SeatNumber,
                     Name = $"{p.FirstName} {p.LastName}".Trim(),
                     Age = p.Age ?? 0,
                     Gender = p.Gender
-                }).ToList() ?? new List<PassengerSummaryDto>()
+                }).ToList()
             };
 
             return ApiResponse<BookingDetailResponseDto>
