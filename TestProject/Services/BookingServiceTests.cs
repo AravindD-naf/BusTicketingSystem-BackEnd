@@ -94,7 +94,7 @@ public class BookingServiceTests
         // Act & Assert
         Func<Task> act = () => sut.CreateBookingAsync(dto, 2, "127.0.0.1");
         await act.Should().ThrowAsync<ValidationException>()
-            .WithMessage("*At least one seat*");
+            .WithMessage("*seatNumbers*");
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class BookingServiceTests
         // Act & Assert
         Func<Task> act = () => sut.CreateBookingAsync(dto, 2, "127.0.0.1");
         await act.Should().ThrowAsync<ValidationException>()
-            .WithMessage("*Maximum 6 seats*");
+            .WithMessage("*seatNumbers*");
     }
 
     [Fact]
@@ -207,7 +207,7 @@ public class BookingServiceTests
         // Act & Assert — rating 6 is out of range
         Func<Task> act = () => sut.RateBookingAsync(bookingId: 1, userId: 2, rating: 6);
         await act.Should().ThrowAsync<ValidationException>()
-            .WithMessage("*between 1 and 5*");
+            .WithMessage("*rating*");
     }
 
     [Fact]

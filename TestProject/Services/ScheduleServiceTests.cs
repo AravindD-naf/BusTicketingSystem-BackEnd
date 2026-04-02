@@ -55,7 +55,7 @@ public class ScheduleServiceTests
                          .ReturnsAsync(false);
         _scheduleRepoMock.Setup(r => r.HasOverlappingScheduleAsync(
             It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<TimeSpan>(),
-            It.IsAny<TimeSpan>(), It.IsAny<bool>(), It.IsAny<int?>()))
+            It.IsAny<TimeSpan>(), It.IsAny<bool>()))
             .ReturnsAsync(false);
         _scheduleRepoMock.Setup(r => r.AddAsync(It.IsAny<Schedule>())).Returns(Task.CompletedTask);
 
@@ -76,7 +76,7 @@ public class ScheduleServiceTests
         result.Success.Should().BeTrue();
         result.Data!.RouteId.Should().Be(1);
         result.Data.BusId.Should().Be(1);
-        result.Data.Fare.Should().Be(550m);
+        result.Data.BaseFare.Should().Be(550m);
 
         // Verify seats were generated (40 seats for the bus)
         _seatRepoMock.Verify(r => r.AddRangeAsync(It.Is<List<Seat>>(
@@ -101,7 +101,7 @@ public class ScheduleServiceTests
         // Act & Assert
         Func<Task> act = () => _sut.CreateAsync(dto, 1, "127.0.0.1");
         await act.Should().ThrowAsync<ValidationException>()
-            .WithMessage("*Arrival time cannot equal departure time*");
+            .WithMessage("*arrivalTime*");
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public class ScheduleServiceTests
         // Act & Assert
         Func<Task> act = () => _sut.CreateAsync(dto, 1, "127.0.0.1");
         await act.Should().ThrowAsync<ValidationException>()
-            .WithMessage("*Travel date cannot be in the past*");
+            .WithMessage("*travelDate*");
     }
 
     [Fact]
@@ -204,7 +204,7 @@ public class ScheduleServiceTests
                          .ReturnsAsync(false);
         _scheduleRepoMock.Setup(r => r.HasOverlappingScheduleAsync(
             It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<TimeSpan>(),
-            It.IsAny<TimeSpan>(), It.IsAny<bool>(), It.IsAny<int?>()))
+            It.IsAny<TimeSpan>(), It.IsAny<bool>()))
             .ReturnsAsync(false);
 
         Schedule? capturedSchedule = null;
@@ -219,7 +219,7 @@ public class ScheduleServiceTests
             RouteId       = 1,
             TravelDate    = DateTime.UtcNow.AddDays(5),
             DepartureTime = "22:00:00",
-            ArrivalTime   = "26:00:00",   // past midnight → overnight
+            ArrivalTime   = "1.02:00:00",   // 26h in d.hh:mm:ss format → overnight
             Fare          = 700m
         };
 

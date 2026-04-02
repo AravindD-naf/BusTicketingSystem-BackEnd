@@ -55,7 +55,7 @@ public class BusServiceTests
 
         _busRepoMock
             .Setup(r => r.CreateAsync(It.IsAny<Bus>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync((Bus b) => b);
 
         // Act
         var result = await _sut.CreateBusAsync(request, userId: 1, ipAddress: "127.0.0.1");
@@ -104,7 +104,7 @@ public class BusServiceTests
             .Setup(r => r.GetByBusNumberAsync(It.IsAny<string>()))
             .ReturnsAsync(deletedBus);
 
-        _busRepoMock.Setup(r => r.CreateAsync(It.IsAny<Bus>())).Returns(Task.CompletedTask);
+        _busRepoMock.Setup(r => r.CreateAsync(It.IsAny<Bus>())).ReturnsAsync((Bus b) => b);
 
         var request = new CreateBusRequest
         {
