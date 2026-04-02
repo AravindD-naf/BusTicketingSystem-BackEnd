@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace BusTicketingSystem.Migrations
 {
     /// <inheritdoc />
-    public partial class BusTicketingSystem_DBSetup : Migration
+    public partial class init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -75,6 +75,81 @@ namespace BusTicketingSystem.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Destinations",
+                columns: table => new
+                {
+                    DestinationId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    DestinationName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Destinations", x => x.DestinationId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ErrorLogs",
+                columns: table => new
+                {
+                    ErrorLogId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: true),
+                    ExceptionType = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    ErrorCode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    UserMessage = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    InternalMessage = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
+                    StackTrace = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    InnerExceptionMessage = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    StatusCode = table.Column<int>(type: "int", nullable: false),
+                    RequestUrl = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    HttpMethod = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    RequestBody = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ClientIpAddress = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    RequestHeaders = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    TraceId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    ValidationErrors = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ContextData = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsHandled = table.Column<bool>(type: "bit", nullable: false),
+                    IsCritical = table.Column<bool>(type: "bit", nullable: false),
+                    Severity = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ResolvedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ResolutionNotes = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ErrorLogs", x => x.ErrorLogId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PromoCodes",
+                columns: table => new
+                {
+                    PromoCodeId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    DiscountType = table.Column<int>(type: "int", nullable: false),
+                    DiscountValue = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    MaxDiscountAmount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    MinBookingAmount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    ValidFrom = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ValidUntil = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    MaxUsageCount = table.Column<int>(type: "int", nullable: false),
+                    UsedCount = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PromoCodes", x => x.PromoCodeId);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Roles",
                 columns: table => new
                 {
@@ -95,6 +170,9 @@ namespace BusTicketingSystem.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Source = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
                     Destination = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    Distance = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    EstimatedTravelTimeMinutes = table.Column<int>(type: "int", nullable: false),
+                    BaseFare = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     IsDeleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
@@ -103,6 +181,24 @@ namespace BusTicketingSystem.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Routes", x => x.RouteId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Sources",
+                columns: table => new
+                {
+                    SourceId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SourceName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Sources", x => x.SourceId);
                 });
 
             migrationBuilder.CreateTable(
@@ -143,6 +239,8 @@ namespace BusTicketingSystem.Migrations
                     TravelDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     DepartureTime = table.Column<TimeSpan>(type: "time", nullable: false),
                     ArrivalTime = table.Column<TimeSpan>(type: "time", nullable: false),
+                    IsOvernightArrival = table.Column<bool>(type: "bit", nullable: false),
+                    Fare = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
                     TotalSeats = table.Column<int>(type: "int", nullable: false),
                     AvailableSeats = table.Column<int>(type: "int", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
@@ -168,6 +266,58 @@ namespace BusTicketingSystem.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ChatMessages",
+                columns: table => new
+                {
+                    MessageId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SenderId = table.Column<int>(type: "int", nullable: false),
+                    ReceiverId = table.Column<int>(type: "int", nullable: false),
+                    Content = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
+                    SentAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IsReadByReceiver = table.Column<bool>(type: "bit", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ChatMessages", x => x.MessageId);
+                    table.ForeignKey(
+                        name: "FK_ChatMessages_Users_ReceiverId",
+                        column: x => x.ReceiverId,
+                        principalTable: "Users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ChatMessages_Users_SenderId",
+                        column: x => x.SenderId,
+                        principalTable: "Users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Wallets",
+                columns: table => new
+                {
+                    WalletId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    Balance = table.Column<decimal>(type: "decimal(12,2)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Wallets", x => x.WalletId);
+                    table.ForeignKey(
+                        name: "FK_Wallets_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Bookings",
                 columns: table => new
                 {
@@ -181,6 +331,14 @@ namespace BusTicketingSystem.Migrations
                     BookingDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     LastStatusChangeAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CancellationReason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    CancelledBy = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    PNR = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    PromoCodeUsed = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    DiscountAmount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    BoardingPointName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    DropPointName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    ContactPhone = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    ContactEmail = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     IsDeleted = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
@@ -198,6 +356,66 @@ namespace BusTicketingSystem.Migrations
                         principalTable: "Users",
                         principalColumn: "UserId",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WalletTransactions",
+                columns: table => new
+                {
+                    TransactionId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WalletId = table.Column<int>(type: "int", nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(12,2)", nullable: false),
+                    BalanceAfter = table.Column<decimal>(type: "decimal(12,2)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: false),
+                    ReferenceId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WalletTransactions", x => x.TransactionId);
+                    table.ForeignKey(
+                        name: "FK_WalletTransactions_Wallets_WalletId",
+                        column: x => x.WalletId,
+                        principalTable: "Wallets",
+                        principalColumn: "WalletId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "BusRatings",
+                columns: table => new
+                {
+                    RatingId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BookingId = table.Column<int>(type: "int", nullable: false),
+                    BusId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    Rating = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BusRatings", x => x.RatingId);
+                    table.ForeignKey(
+                        name: "FK_BusRatings_Bookings_BookingId",
+                        column: x => x.BookingId,
+                        principalTable: "Bookings",
+                        principalColumn: "BookingId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_BusRatings_Buses_BusId",
+                        column: x => x.BusId,
+                        principalTable: "Buses",
+                        principalColumn: "BusId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_BusRatings_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -280,7 +498,9 @@ namespace BusTicketingSystem.Migrations
                     Reason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     RequestedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ProcessedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    BookingId1 = table.Column<int>(type: "int", nullable: true),
+                    PaymentId1 = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -290,13 +510,23 @@ namespace BusTicketingSystem.Migrations
                         column: x => x.BookingId,
                         principalTable: "Bookings",
                         principalColumn: "BookingId",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Refunds_Bookings_BookingId1",
+                        column: x => x.BookingId1,
+                        principalTable: "Bookings",
+                        principalColumn: "BookingId");
                     table.ForeignKey(
                         name: "FK_Refunds_Payments_PaymentId",
                         column: x => x.PaymentId,
                         principalTable: "Payments",
                         principalColumn: "PaymentId",
-                        onDelete: ReferentialAction.NoAction);  // ✅ FIXED: NO ACTION to prevent multiple cascade paths
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Refunds_Payments_PaymentId1",
+                        column: x => x.PaymentId1,
+                        principalTable: "Payments",
+                        principalColumn: "PaymentId");
                 });
 
             migrationBuilder.CreateTable(
@@ -315,10 +545,12 @@ namespace BusTicketingSystem.Migrations
                     IdType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     IdNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Age = table.Column<int>(type: "int", nullable: true),
+                    Gender = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
                     SpecialRequirements = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    BookingId1 = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -330,11 +562,16 @@ namespace BusTicketingSystem.Migrations
                         principalColumn: "BookingId",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
+                        name: "FK_Passengers_Bookings_BookingId1",
+                        column: x => x.BookingId1,
+                        principalTable: "Bookings",
+                        principalColumn: "BookingId");
+                    table.ForeignKey(
                         name: "FK_Passengers_Seats_SeatId",
                         column: x => x.SeatId,
                         principalTable: "Seats",
                         principalColumn: "SeatId",
-                        onDelete: ReferentialAction.NoAction);  // ✅ FIXED: NO ACTION to prevent multiple cascade paths
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -369,6 +606,18 @@ namespace BusTicketingSystem.Migrations
                 });
 
             migrationBuilder.InsertData(
+                table: "PromoCodes",
+                columns: new[] { "PromoCodeId", "Code", "CreatedAt", "DiscountType", "DiscountValue", "IsActive", "MaxDiscountAmount", "MaxUsageCount", "MinBookingAmount", "UsedCount", "ValidFrom", "ValidUntil" },
+                values: new object[,]
+                {
+                    { 1, "FIRSTBUS20", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 0, 20m, true, 0m, 0, 300m, 0, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2026, 5, 31, 0, 0, 0, 0, DateTimeKind.Unspecified) },
+                    { 2, "WEEKEND150", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, 150m, true, 150m, 0, 500m, 0, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2026, 4, 30, 0, 0, 0, 0, DateTimeKind.Unspecified) },
+                    { 3, "MEMBER100", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, 100m, true, 100m, 0, 400m, 0, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2026, 4, 15, 0, 0, 0, 0, DateTimeKind.Unspecified) },
+                    { 4, "SLEEPER15", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 0, 15m, true, 300m, 0, 600m, 0, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2026, 4, 30, 0, 0, 0, 0, DateTimeKind.Unspecified) },
+                    { 5, "GROUP10", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 0, 10m, true, 500m, 0, 0m, 0, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2026, 5, 31, 0, 0, 0, 0, DateTimeKind.Unspecified) }
+                });
+
+            migrationBuilder.InsertData(
                 table: "Roles",
                 columns: new[] { "RoleId", "Name" },
                 values: new object[,]
@@ -399,9 +648,40 @@ namespace BusTicketingSystem.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_BusRatings_BookingId",
+                table: "BusRatings",
+                column: "BookingId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BusRatings_BusId",
+                table: "BusRatings",
+                column: "BusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BusRatings_UserId",
+                table: "BusRatings",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChatMessages_ReceiverId",
+                table: "ChatMessages",
+                column: "ReceiverId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChatMessages_SenderId",
+                table: "ChatMessages",
+                column: "SenderId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Passengers_BookingId",
                 table: "Passengers",
                 column: "BookingId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Passengers_BookingId1",
+                table: "Passengers",
+                column: "BookingId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Passengers_SeatId",
@@ -417,14 +697,26 @@ namespace BusTicketingSystem.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Refunds_BookingId",
                 table: "Refunds",
-                column: "BookingId",
-                unique: true);
+                column: "BookingId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Refunds_BookingId1",
+                table: "Refunds",
+                column: "BookingId1",
+                unique: true,
+                filter: "[BookingId1] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Refunds_PaymentId",
                 table: "Refunds",
-                column: "PaymentId",
-                unique: true);
+                column: "PaymentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Refunds_PaymentId1",
+                table: "Refunds",
+                column: "PaymentId1",
+                unique: true,
+                filter: "[PaymentId1] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Routes_Source_Destination",
@@ -495,6 +787,17 @@ namespace BusTicketingSystem.Migrations
                 name: "IX_Users_RoleId",
                 table: "Users",
                 column: "RoleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Wallets_UserId",
+                table: "Wallets",
+                column: "UserId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WalletTransactions_WalletId",
+                table: "WalletTransactions",
+                column: "WalletId");
         }
 
         /// <inheritdoc />
@@ -504,10 +807,25 @@ namespace BusTicketingSystem.Migrations
                 name: "AuditLogs");
 
             migrationBuilder.DropTable(
+                name: "BusRatings");
+
+            migrationBuilder.DropTable(
                 name: "CancellationPolicies");
 
             migrationBuilder.DropTable(
+                name: "ChatMessages");
+
+            migrationBuilder.DropTable(
+                name: "Destinations");
+
+            migrationBuilder.DropTable(
+                name: "ErrorLogs");
+
+            migrationBuilder.DropTable(
                 name: "Passengers");
+
+            migrationBuilder.DropTable(
+                name: "PromoCodes");
 
             migrationBuilder.DropTable(
                 name: "Refunds");
@@ -516,10 +834,19 @@ namespace BusTicketingSystem.Migrations
                 name: "SeatLocks");
 
             migrationBuilder.DropTable(
+                name: "Sources");
+
+            migrationBuilder.DropTable(
+                name: "WalletTransactions");
+
+            migrationBuilder.DropTable(
                 name: "Payments");
 
             migrationBuilder.DropTable(
                 name: "Seats");
+
+            migrationBuilder.DropTable(
+                name: "Wallets");
 
             migrationBuilder.DropTable(
                 name: "Bookings");

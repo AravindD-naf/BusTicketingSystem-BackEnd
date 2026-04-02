@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BusTicketingSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260318071129_updated-routeresponseto")]
-    partial class updatedrouteresponseto
+    [Migration("20260402104026_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -72,6 +72,10 @@ namespace BusTicketingSystem.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookingId"));
 
+                    b.Property<string>("BoardingPointName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<DateTime>("BookingDate")
                         .HasColumnType("datetime2");
 
@@ -83,6 +87,26 @@ namespace BusTicketingSystem.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("CancelledBy")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ContactEmail")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ContactPhone")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("DropPointName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -91,6 +115,15 @@ namespace BusTicketingSystem.Migrations
 
                     b.Property<int>("NumberOfSeats")
                         .HasColumnType("int");
+
+                    b.Property<string>("PNR")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("PromoCodeUsed")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int>("ScheduleId")
                         .HasColumnType("int");
@@ -159,6 +192,41 @@ namespace BusTicketingSystem.Migrations
                     b.ToTable("Buses");
                 });
 
+            modelBuilder.Entity("BusTicketingSystem.Models.BusRating", b =>
+                {
+                    b.Property<int>("RatingId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RatingId"));
+
+                    b.Property<int>("BookingId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BusId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("RatingId");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique();
+
+                    b.HasIndex("BusId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("BusRatings");
+                });
+
             modelBuilder.Entity("BusTicketingSystem.Models.CancellationPolicy", b =>
                 {
                     b.Property<int>("PolicyId")
@@ -198,6 +266,43 @@ namespace BusTicketingSystem.Migrations
                     b.HasKey("PolicyId");
 
                     b.ToTable("CancellationPolicies");
+                });
+
+            modelBuilder.Entity("BusTicketingSystem.Models.ChatMessage", b =>
+                {
+                    b.Property<int>("MessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MessageId"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsReadByReceiver")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ReceiverId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SenderId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("MessageId");
+
+                    b.HasIndex("ReceiverId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("ChatMessages");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Destination", b =>
@@ -355,6 +460,9 @@ namespace BusTicketingSystem.Migrations
                     b.Property<int>("BookingId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("BookingId1")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -367,6 +475,10 @@ namespace BusTicketingSystem.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Gender")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("IdNumber")
                         .IsRequired()
@@ -410,6 +522,8 @@ namespace BusTicketingSystem.Migrations
                     b.HasKey("PassengerId");
 
                     b.HasIndex("BookingId");
+
+                    b.HasIndex("BookingId1");
 
                     b.HasIndex("SeatId");
 
@@ -468,6 +582,131 @@ namespace BusTicketingSystem.Migrations
                     b.ToTable("Payments");
                 });
 
+            modelBuilder.Entity("BusTicketingSystem.Models.PromoCode", b =>
+                {
+                    b.Property<int>("PromoCodeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PromoCodeId"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DiscountType")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("DiscountValue")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("MaxDiscountAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("MaxUsageCount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("MinBookingAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("UsedCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ValidUntil")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("PromoCodeId");
+
+                    b.ToTable("PromoCodes");
+
+                    b.HasData(
+                        new
+                        {
+                            PromoCodeId = 1,
+                            Code = "FIRSTBUS20",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DiscountType = 0,
+                            DiscountValue = 20m,
+                            IsActive = true,
+                            MaxDiscountAmount = 0m,
+                            MaxUsageCount = 0,
+                            MinBookingAmount = 300m,
+                            UsedCount = 0,
+                            ValidFrom = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            ValidUntil = new DateTime(2026, 5, 31, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            PromoCodeId = 2,
+                            Code = "WEEKEND150",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DiscountType = 1,
+                            DiscountValue = 150m,
+                            IsActive = true,
+                            MaxDiscountAmount = 150m,
+                            MaxUsageCount = 0,
+                            MinBookingAmount = 500m,
+                            UsedCount = 0,
+                            ValidFrom = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            ValidUntil = new DateTime(2026, 4, 30, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            PromoCodeId = 3,
+                            Code = "MEMBER100",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DiscountType = 1,
+                            DiscountValue = 100m,
+                            IsActive = true,
+                            MaxDiscountAmount = 100m,
+                            MaxUsageCount = 0,
+                            MinBookingAmount = 400m,
+                            UsedCount = 0,
+                            ValidFrom = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            ValidUntil = new DateTime(2026, 4, 15, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            PromoCodeId = 4,
+                            Code = "SLEEPER15",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DiscountType = 0,
+                            DiscountValue = 15m,
+                            IsActive = true,
+                            MaxDiscountAmount = 300m,
+                            MaxUsageCount = 0,
+                            MinBookingAmount = 600m,
+                            UsedCount = 0,
+                            ValidFrom = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            ValidUntil = new DateTime(2026, 4, 30, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            PromoCodeId = 5,
+                            Code = "GROUP10",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DiscountType = 0,
+                            DiscountValue = 10m,
+                            IsActive = true,
+                            MaxDiscountAmount = 500m,
+                            MaxUsageCount = 0,
+                            MinBookingAmount = 0m,
+                            UsedCount = 0,
+                            ValidFrom = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            ValidUntil = new DateTime(2026, 5, 31, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        });
+                });
+
             modelBuilder.Entity("BusTicketingSystem.Models.Refund", b =>
                 {
                     b.Property<int>("RefundId")
@@ -479,6 +718,9 @@ namespace BusTicketingSystem.Migrations
                     b.Property<int>("BookingId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("BookingId1")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("CancellationFee")
                         .HasColumnType("decimal(10,2)");
 
@@ -486,6 +728,9 @@ namespace BusTicketingSystem.Migrations
                         .HasColumnType("bit");
 
                     b.Property<int>("PaymentId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PaymentId1")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("ProcessedAt")
@@ -510,11 +755,17 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("RefundId");
 
-                    b.HasIndex("BookingId")
-                        .IsUnique();
+                    b.HasIndex("BookingId");
 
-                    b.HasIndex("PaymentId")
-                        .IsUnique();
+                    b.HasIndex("BookingId1")
+                        .IsUnique()
+                        .HasFilter("[BookingId1] IS NOT NULL");
+
+                    b.HasIndex("PaymentId");
+
+                    b.HasIndex("PaymentId1")
+                        .IsUnique()
+                        .HasFilter("[PaymentId1] IS NOT NULL");
 
                     b.ToTable("Refunds");
                 });
@@ -627,6 +878,9 @@ namespace BusTicketingSystem.Migrations
                     b.Property<TimeSpan>("DepartureTime")
                         .HasColumnType("time");
 
+                    b.Property<decimal>("Fare")
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -636,6 +890,9 @@ namespace BusTicketingSystem.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
+
+                    b.Property<bool>("IsOvernightArrival")
+                        .HasColumnType("bit");
 
                     b.Property<int>("RouteId")
                         .HasColumnType("int");
@@ -852,6 +1109,73 @@ namespace BusTicketingSystem.Migrations
                         });
                 });
 
+            modelBuilder.Entity("BusTicketingSystem.Models.Wallet", b =>
+                {
+                    b.Property<int>("WalletId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("WalletId"));
+
+                    b.Property<decimal>("Balance")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("WalletId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("Wallets");
+                });
+
+            modelBuilder.Entity("BusTicketingSystem.Models.WalletTransaction", b =>
+                {
+                    b.Property<int>("TransactionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TransactionId"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("ReferenceId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
+
+                    b.HasKey("TransactionId");
+
+                    b.HasIndex("WalletId");
+
+                    b.ToTable("WalletTransactions");
+                });
+
             modelBuilder.Entity("BusTicketingSystem.Models.Booking", b =>
                 {
                     b.HasOne("BusTicketingSystem.Models.Schedule", "Schedule")
@@ -871,18 +1195,68 @@ namespace BusTicketingSystem.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("BusTicketingSystem.Models.BusRating", b =>
+                {
+                    b.HasOne("BusTicketingSystem.Models.Booking", "Booking")
+                        .WithOne("BusRating")
+                        .HasForeignKey("BusTicketingSystem.Models.BusRating", "BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BusTicketingSystem.Models.Bus", "Bus")
+                        .WithMany("Ratings")
+                        .HasForeignKey("BusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BusTicketingSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("Bus");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BusTicketingSystem.Models.ChatMessage", b =>
+                {
+                    b.HasOne("BusTicketingSystem.Models.User", "Receiver")
+                        .WithMany()
+                        .HasForeignKey("ReceiverId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BusTicketingSystem.Models.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Receiver");
+
+                    b.Navigation("Sender");
+                });
+
             modelBuilder.Entity("BusTicketingSystem.Models.Passenger", b =>
                 {
                     b.HasOne("BusTicketingSystem.Models.Booking", "Booking")
-                        .WithMany("Passengers")
+                        .WithMany()
                         .HasForeignKey("BookingId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("BusTicketingSystem.Models.Booking", null)
+                        .WithMany("Passengers")
+                        .HasForeignKey("BookingId1");
+
                     b.HasOne("BusTicketingSystem.Models.Seat", "Seat")
                         .WithMany()
                         .HasForeignKey("SeatId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Booking");
@@ -904,16 +1278,24 @@ namespace BusTicketingSystem.Migrations
             modelBuilder.Entity("BusTicketingSystem.Models.Refund", b =>
                 {
                     b.HasOne("BusTicketingSystem.Models.Booking", "Booking")
-                        .WithOne("Refund")
-                        .HasForeignKey("BusTicketingSystem.Models.Refund", "BookingId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("BusTicketingSystem.Models.Payment", "Payment")
+                    b.HasOne("BusTicketingSystem.Models.Booking", null)
                         .WithOne("Refund")
-                        .HasForeignKey("BusTicketingSystem.Models.Refund", "PaymentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasForeignKey("BusTicketingSystem.Models.Refund", "BookingId1");
+
+                    b.HasOne("BusTicketingSystem.Models.Payment", "Payment")
+                        .WithMany()
+                        .HasForeignKey("PaymentId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("BusTicketingSystem.Models.Payment", null)
+                        .WithOne("Refund")
+                        .HasForeignKey("BusTicketingSystem.Models.Refund", "PaymentId1");
 
                     b.Navigation("Booking");
 
@@ -992,8 +1374,32 @@ namespace BusTicketingSystem.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("BusTicketingSystem.Models.Wallet", b =>
+                {
+                    b.HasOne("BusTicketingSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BusTicketingSystem.Models.WalletTransaction", b =>
+                {
+                    b.HasOne("BusTicketingSystem.Models.Wallet", "Wallet")
+                        .WithMany("Transactions")
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
+                });
+
             modelBuilder.Entity("BusTicketingSystem.Models.Booking", b =>
                 {
+                    b.Navigation("BusRating");
+
                     b.Navigation("Passengers");
 
                     b.Navigation("Payment");
@@ -1001,6 +1407,11 @@ namespace BusTicketingSystem.Migrations
                     b.Navigation("Refund");
 
                     b.Navigation("Seats");
+                });
+
+            modelBuilder.Entity("BusTicketingSystem.Models.Bus", b =>
+                {
+                    b.Navigation("Ratings");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Payment", b =>
@@ -1011,6 +1422,11 @@ namespace BusTicketingSystem.Migrations
             modelBuilder.Entity("BusTicketingSystem.Models.Role", b =>
                 {
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("BusTicketingSystem.Models.Wallet", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }

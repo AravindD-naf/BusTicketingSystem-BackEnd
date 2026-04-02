@@ -42,6 +42,40 @@ namespace BusTicketingSystem.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // =========================
+            // 🔥 FIX: CASCADE ISSUES
+            // =========================
+
+            // Refund
+            modelBuilder.Entity<Refund>()
+                .HasOne(r => r.Booking)
+                .WithMany()
+                .HasForeignKey(r => r.BookingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Refund>()
+                .HasOne(r => r.Payment)
+                .WithMany()
+                .HasForeignKey(r => r.PaymentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Passenger
+            modelBuilder.Entity<Passenger>()
+                .HasOne(p => p.Booking)
+                .WithMany()
+                .HasForeignKey(p => p.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Passenger>()
+                .HasOne(p => p.Seat)
+                .WithMany()
+                .HasForeignKey(p => p.SeatId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // =========================
+            // INDEXES & SEED DATA
+            // =========================
+
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
@@ -62,15 +96,14 @@ namespace BusTicketingSystem.Data
                     UserId = 1,
                     FullName = "System Admin",
                     Email = "admin@system.com",
-                    //PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
-                    PasswordHash = "$2a$12$q3IlCTLc4..NdjaxvVHL.OVvMulc/lMJ306tHOJ0gXufE3GGdho76", // ← static
+                    PasswordHash = "$2a$12$q3IlCTLc4..NdjaxvVHL.OVvMulc/lMJ306tHOJ0gXufE3GGdho76",
                     PhoneNumber = "9999999999",
-                    RoleId = 1, // Admin
+                    RoleId = 1,
                     IsActive = true,
                     CreatedAt = new DateTime(2025, 01, 01),
                     IsDeleted = false
                 }
-                );
+            );
 
             modelBuilder.Entity<AuditLog>().HasKey(a => a.AuditId);
 
@@ -78,37 +111,28 @@ namespace BusTicketingSystem.Data
                 .HasIndex(w => w.UserId)
                 .IsUnique();
 
-            // Seed promo codes matching the landing page deals
             modelBuilder.Entity<PromoCode>().HasData(
-                new PromoCode { PromoCodeId = 1, Code = "FIRSTBUS20",  DiscountType = DiscountType.Percentage, DiscountValue = 20, MaxDiscountAmount = 0,   MinBookingAmount = 300,  ValidFrom = new DateTime(2026,1,1), ValidUntil = new DateTime(2026,5,31), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026,1,1) },
-                new PromoCode { PromoCodeId = 2, Code = "WEEKEND150",  DiscountType = DiscountType.Flat,       DiscountValue = 150, MaxDiscountAmount = 150, MinBookingAmount = 500,  ValidFrom = new DateTime(2026,1,1), ValidUntil = new DateTime(2026,4,30), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026,1,1) },
-                new PromoCode { PromoCodeId = 3, Code = "MEMBER100",   DiscountType = DiscountType.Flat,       DiscountValue = 100, MaxDiscountAmount = 100, MinBookingAmount = 400,  ValidFrom = new DateTime(2026,1,1), ValidUntil = new DateTime(2026,4,15), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026,1,1) },
-                new PromoCode { PromoCodeId = 4, Code = "SLEEPER15",   DiscountType = DiscountType.Percentage, DiscountValue = 15,  MaxDiscountAmount = 300, MinBookingAmount = 600,  ValidFrom = new DateTime(2026,1,1), ValidUntil = new DateTime(2026,4,30), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026,1,1) },
-                new PromoCode { PromoCodeId = 5, Code = "GROUP10",     DiscountType = DiscountType.Percentage, DiscountValue = 10,  MaxDiscountAmount = 500, MinBookingAmount = 0,    ValidFrom = new DateTime(2026,1,1), ValidUntil = new DateTime(2026,5,31), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026,1,1) }
+                new PromoCode { PromoCodeId = 1, Code = "FIRSTBUS20", DiscountType = DiscountType.Percentage, DiscountValue = 20, MaxDiscountAmount = 0, MinBookingAmount = 300, ValidFrom = new DateTime(2026, 1, 1), ValidUntil = new DateTime(2026, 5, 31), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026, 1, 1) },
+                new PromoCode { PromoCodeId = 2, Code = "WEEKEND150", DiscountType = DiscountType.Flat, DiscountValue = 150, MaxDiscountAmount = 150, MinBookingAmount = 500, ValidFrom = new DateTime(2026, 1, 1), ValidUntil = new DateTime(2026, 4, 30), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026, 1, 1) },
+                new PromoCode { PromoCodeId = 3, Code = "MEMBER100", DiscountType = DiscountType.Flat, DiscountValue = 100, MaxDiscountAmount = 100, MinBookingAmount = 400, ValidFrom = new DateTime(2026, 1, 1), ValidUntil = new DateTime(2026, 4, 15), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026, 1, 1) },
+                new PromoCode { PromoCodeId = 4, Code = "SLEEPER15", DiscountType = DiscountType.Percentage, DiscountValue = 15, MaxDiscountAmount = 300, MinBookingAmount = 600, ValidFrom = new DateTime(2026, 1, 1), ValidUntil = new DateTime(2026, 4, 30), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026, 1, 1) },
+                new PromoCode { PromoCodeId = 5, Code = "GROUP10", DiscountType = DiscountType.Percentage, DiscountValue = 10, MaxDiscountAmount = 500, MinBookingAmount = 0, ValidFrom = new DateTime(2026, 1, 1), ValidUntil = new DateTime(2026, 5, 31), MaxUsageCount = 0, IsActive = true, CreatedAt = new DateTime(2026, 1, 1) }
             );
 
+            // =========================
+            // ROUTE
+            // =========================
             modelBuilder.Entity<Models.Route>(entity =>
             {
                 entity.HasKey(r => r.RouteId);
 
-                entity.Property(r => r.Source)
-                    .IsRequired()
-                    .HasMaxLength(150);
+                entity.Property(r => r.Source).IsRequired().HasMaxLength(150);
+                entity.Property(r => r.Destination).IsRequired().HasMaxLength(150);
 
-                entity.Property(r => r.Destination)
-                    .IsRequired()
-                    .HasMaxLength(150);
+                entity.Property(r => r.IsActive).HasDefaultValue(true);
+                entity.Property(r => r.IsDeleted).HasDefaultValue(false);
+                entity.Property(r => r.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
 
-                entity.Property(r => r.IsActive)
-                    .HasDefaultValue(true);
-
-                entity.Property(r => r.IsDeleted)
-                    .HasDefaultValue(false);
-
-                entity.Property(r => r.CreatedAt)
-                    .HasDefaultValueSql("GETUTCDATE()");
-
-                // Composite Unique Constraint (Only for non-deleted records)
                 entity.HasIndex(r => new { r.Source, r.Destination })
                     .IsUnique()
                     .HasFilter("[IsDeleted] = 0");
@@ -116,6 +140,9 @@ namespace BusTicketingSystem.Data
                 entity.HasQueryFilter(r => !r.IsDeleted);
             });
 
+            // =========================
+            // SCHEDULE
+            // =========================
             modelBuilder.Entity<Schedule>(entity =>
             {
                 entity.HasKey(s => s.ScheduleId);
@@ -130,28 +157,17 @@ namespace BusTicketingSystem.Data
                     .HasForeignKey(s => s.RouteId)
                     .OnDelete(DeleteBehavior.Restrict);
 
+                entity.Property(s => s.DepartureTime).IsRequired();
+                entity.Property(s => s.ArrivalTime).IsRequired();
 
-                entity.Property(s => s.DepartureTime)
-                    .IsRequired();
+                entity.Property(s => s.IsActive).HasDefaultValue(true);
+                entity.Property(s => s.IsDeleted).HasDefaultValue(false);
+                entity.Property(s => s.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
 
-                entity.Property(s => s.ArrivalTime)
-                    .IsRequired();
-
-                entity.Property(s => s.IsActive)
-                    .HasDefaultValue(true);
-
-                entity.Property(s => s.IsDeleted)
-                    .HasDefaultValue(false);
-
-                entity.Property(s => s.CreatedAt)
-                    .HasDefaultValueSql("GETUTCDATE()");
-
-                // Composite Unique Constraint
                 entity.HasIndex(s => new { s.BusId, s.RouteId, s.DepartureTime, s.TravelDate })
                     .IsUnique()
                     .HasFilter("[IsDeleted] = 0");
 
-                // Performance Indexes
                 entity.HasIndex(s => s.BusId);
                 entity.HasIndex(s => s.RouteId);
                 entity.HasIndex(s => s.DepartureTime);
@@ -160,6 +176,9 @@ namespace BusTicketingSystem.Data
                 entity.HasQueryFilter(s => !s.IsDeleted);
             });
 
+            // =========================
+            // CHAT
+            // =========================
             modelBuilder.Entity<ChatMessage>(entity =>
             {
                 entity.HasOne(m => m.Sender)
@@ -173,7 +192,9 @@ namespace BusTicketingSystem.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // BusRating — restrict cascade to avoid multiple cascade paths
+            // =========================
+            // BUS RATING
+            // =========================
             modelBuilder.Entity<BusRating>(entity =>
             {
                 entity.HasOne(r => r.Booking)
@@ -191,7 +212,6 @@ namespace BusTicketingSystem.Data
                     .HasForeignKey(r => r.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // One rating per booking
                 entity.HasIndex(r => r.BookingId).IsUnique();
             });
         }

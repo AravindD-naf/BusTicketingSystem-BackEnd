@@ -58,7 +58,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("AuditId");
 
-                    b.ToTable("AuditLogs", (string)null);
+                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Booking", b =>
@@ -137,7 +137,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Bookings", (string)null);
+                    b.ToTable("Bookings");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Bus", b =>
@@ -186,7 +186,7 @@ namespace BusTicketingSystem.Migrations
                     b.HasIndex("BusNumber")
                         .IsUnique();
 
-                    b.ToTable("Buses", (string)null);
+                    b.ToTable("Buses");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.BusRating", b =>
@@ -221,7 +221,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("BusRatings", (string)null);
+                    b.ToTable("BusRatings");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.CancellationPolicy", b =>
@@ -262,7 +262,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("PolicyId");
 
-                    b.ToTable("CancellationPolicies", (string)null);
+                    b.ToTable("CancellationPolicies");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.ChatMessage", b =>
@@ -299,7 +299,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("ChatMessages", (string)null);
+                    b.ToTable("ChatMessages");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Destination", b =>
@@ -334,7 +334,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("DestinationId");
 
-                    b.ToTable("Destinations", (string)null);
+                    b.ToTable("Destinations");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.ErrorLog", b =>
@@ -440,7 +440,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("ErrorLogId");
 
-                    b.ToTable("ErrorLogs", (string)null);
+                    b.ToTable("ErrorLogs");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Passenger", b =>
@@ -455,6 +455,9 @@ namespace BusTicketingSystem.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("BookingId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BookingId1")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
@@ -517,9 +520,11 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("BookingId");
 
+                    b.HasIndex("BookingId1");
+
                     b.HasIndex("SeatId");
 
-                    b.ToTable("Passengers", (string)null);
+                    b.ToTable("Passengers");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Payment", b =>
@@ -571,7 +576,7 @@ namespace BusTicketingSystem.Migrations
                     b.HasIndex("BookingId")
                         .IsUnique();
 
-                    b.ToTable("Payments", (string)null);
+                    b.ToTable("Payments");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.PromoCode", b =>
@@ -619,7 +624,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("PromoCodeId");
 
-                    b.ToTable("PromoCodes", (string)null);
+                    b.ToTable("PromoCodes");
 
                     b.HasData(
                         new
@@ -710,6 +715,9 @@ namespace BusTicketingSystem.Migrations
                     b.Property<int>("BookingId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("BookingId1")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("CancellationFee")
                         .HasColumnType("decimal(10,2)");
 
@@ -717,6 +725,9 @@ namespace BusTicketingSystem.Migrations
                         .HasColumnType("bit");
 
                     b.Property<int>("PaymentId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PaymentId1")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("ProcessedAt")
@@ -741,13 +752,19 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("RefundId");
 
-                    b.HasIndex("BookingId")
-                        .IsUnique();
+                    b.HasIndex("BookingId");
 
-                    b.HasIndex("PaymentId")
-                        .IsUnique();
+                    b.HasIndex("BookingId1")
+                        .IsUnique()
+                        .HasFilter("[BookingId1] IS NOT NULL");
 
-                    b.ToTable("Refunds", (string)null);
+                    b.HasIndex("PaymentId");
+
+                    b.HasIndex("PaymentId1")
+                        .IsUnique()
+                        .HasFilter("[PaymentId1] IS NOT NULL");
+
+                    b.ToTable("Refunds");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Role", b =>
@@ -764,7 +781,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("RoleId");
 
-                    b.ToTable("Roles", (string)null);
+                    b.ToTable("Roles");
 
                     b.HasData(
                         new
@@ -830,7 +847,7 @@ namespace BusTicketingSystem.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Routes", (string)null);
+                    b.ToTable("Routes");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Schedule", b =>
@@ -900,7 +917,7 @@ namespace BusTicketingSystem.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Schedules", (string)null);
+                    b.ToTable("Schedules");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Seat", b =>
@@ -950,7 +967,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("ScheduleId");
 
-                    b.ToTable("Seats", (string)null);
+                    b.ToTable("Seats");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.SeatLock", b =>
@@ -988,7 +1005,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("SeatLocks", (string)null);
+                    b.ToTable("SeatLocks");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Source", b =>
@@ -1023,7 +1040,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasKey("SourceId");
 
-                    b.ToTable("Sources", (string)null);
+                    b.ToTable("Sources");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.User", b =>
@@ -1072,7 +1089,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
 
                     b.HasData(
                         new
@@ -1114,7 +1131,7 @@ namespace BusTicketingSystem.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Wallets", (string)null);
+                    b.ToTable("Wallets");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.WalletTransaction", b =>
@@ -1153,7 +1170,7 @@ namespace BusTicketingSystem.Migrations
 
                     b.HasIndex("WalletId");
 
-                    b.ToTable("WalletTransactions", (string)null);
+                    b.ToTable("WalletTransactions");
                 });
 
             modelBuilder.Entity("BusTicketingSystem.Models.Booking", b =>
@@ -1224,15 +1241,19 @@ namespace BusTicketingSystem.Migrations
             modelBuilder.Entity("BusTicketingSystem.Models.Passenger", b =>
                 {
                     b.HasOne("BusTicketingSystem.Models.Booking", "Booking")
-                        .WithMany("Passengers")
+                        .WithMany()
                         .HasForeignKey("BookingId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("BusTicketingSystem.Models.Booking", null)
+                        .WithMany("Passengers")
+                        .HasForeignKey("BookingId1");
+
                     b.HasOne("BusTicketingSystem.Models.Seat", "Seat")
                         .WithMany()
                         .HasForeignKey("SeatId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Booking");
@@ -1254,16 +1275,24 @@ namespace BusTicketingSystem.Migrations
             modelBuilder.Entity("BusTicketingSystem.Models.Refund", b =>
                 {
                     b.HasOne("BusTicketingSystem.Models.Booking", "Booking")
-                        .WithOne("Refund")
-                        .HasForeignKey("BusTicketingSystem.Models.Refund", "BookingId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("BusTicketingSystem.Models.Payment", "Payment")
+                    b.HasOne("BusTicketingSystem.Models.Booking", null)
                         .WithOne("Refund")
-                        .HasForeignKey("BusTicketingSystem.Models.Refund", "PaymentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasForeignKey("BusTicketingSystem.Models.Refund", "BookingId1");
+
+                    b.HasOne("BusTicketingSystem.Models.Payment", "Payment")
+                        .WithMany()
+                        .HasForeignKey("PaymentId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("BusTicketingSystem.Models.Payment", null)
+                        .WithOne("Refund")
+                        .HasForeignKey("BusTicketingSystem.Models.Refund", "PaymentId1");
 
                     b.Navigation("Booking");
 

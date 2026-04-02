@@ -12,12 +12,11 @@ namespace BusTicketingSystem.Models
         public int UserId { get; set; }
 
         [ForeignKey("UserId")]
-        public User User { get; set; } = null!;
+        public User? User { get; set; }
 
         [Required]
         [Column(TypeName = "decimal(12,2)")]
         public decimal Balance { get; set; } = 0;
-
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
