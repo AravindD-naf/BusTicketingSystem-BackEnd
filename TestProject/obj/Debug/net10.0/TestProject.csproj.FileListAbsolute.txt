@@ -1,0 +1,8 @@
+C:\Users\Aravind.D\source\repos\TestProject\bin\Debug\net10.0\.msCoverageSourceRootsMapping_TestProject
+C:\Users\Aravind.D\source\repos\TestProject\bin\Debug\net10.0\CoverletSourceRootsMapping_TestProject
+C:\Users\Aravind.D\source\repos\TestProject\obj\Debug\net10.0\TestProject.csproj.AssemblyReference.cache
+C:\Users\Aravind.D\source\repos\TestProject\obj\Debug\net10.0\TestProject.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Aravind.D\source\repos\TestProject\obj\Debug\net10.0\TestProject.AssemblyInfoInputs.cache
+C:\Users\Aravind.D\source\repos\TestProject\obj\Debug\net10.0\TestProject.AssemblyInfo.cs
+C:\Users\Aravind.D\source\repos\TestProject\obj\Debug\net10.0\TestProject.csproj.CoreCompileInputs.cache
+C:\Users\Aravind.D\source\repos\TestProject\obj\Debug\net10.0\TestProject.sourcelink.json
