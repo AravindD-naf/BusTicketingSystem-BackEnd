@@ -15,7 +15,7 @@ namespace BusTicketingSystem.Services
         private readonly IScheduleRepository _scheduleRepository;
         private readonly IAuditRepository _auditRepository;
         private readonly IBookingRepository _bookingRepository;
-        private const int LOCK_EXPIRY_MINUTES = 5;
+        private const int LOCK_EXPIRY_MINUTES = 4;
 
         public SeatService(
             ISeatRepository seatRepository,
