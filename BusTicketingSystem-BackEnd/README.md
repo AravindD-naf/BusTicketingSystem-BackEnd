@@ -4,7 +4,6 @@
 A comprehensive Bus Ticketing System built with .NET 10, designed with simplicity and cleaner architecture. The system manages buses, routes, schedules, bookings, and seat management with proper role-based access control.
 
 ## Key Features
-
 ### 1. Bus Management
 - **Create Bus**: Admin can create buses with seats (max 40 seats)
 - **Initial Status**: Buses start in **Inactive** state
