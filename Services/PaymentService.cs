@@ -21,6 +21,8 @@ namespace BusTicketingSystem.Services
         private readonly ISeatRepository _seatRepository;
         private readonly IPromoCodeService _promoCodeService;
         private readonly IWalletService _walletService;
+        private readonly IEmailService _emailService;
+        private readonly IUserRepository _userRepository;
 
         public PaymentService(
             IPaymentRepository paymentRepository,
@@ -31,7 +33,9 @@ namespace BusTicketingSystem.Services
             IAuditRepository auditRepository,
             ISeatRepository seatRepository,
             IPromoCodeService promoCodeService,
-            IWalletService walletService)
+            IWalletService walletService,
+            IEmailService emailService,
+            IUserRepository userRepository)
         {
             _paymentRepository = paymentRepository;
             _refundRepository = refundRepository;
@@ -42,6 +46,8 @@ namespace BusTicketingSystem.Services
             _seatRepository = seatRepository;
             _promoCodeService = promoCodeService;
             _walletService = walletService;
+            _emailService = emailService;
+            _userRepository = userRepository;
         }
 
         public async Task<ApiResponse<PaymentResponseDto>> InitiatePaymentAsync(
@@ -178,6 +184,8 @@ namespace BusTicketingSystem.Services
                 var lockedSeats = await _seatRepository.GetLockedSeatsByUserAsync(
                     booking.ScheduleId, booking.UserId);
 
+                var schedule = await _scheduleRepository.GetByIdAsync(booking.ScheduleId);
+
                 if (lockedSeats.Count > 0)
                 {
                     var now = DateTime.UtcNow;
@@ -191,12 +199,29 @@ namespace BusTicketingSystem.Services
                     await _seatRepository.UpdateManyAsync(lockedSeats);
 
                     // Now decrement AvailableSeats since payment is confirmed
-                    var schedule = await _scheduleRepository.GetByIdAsync(booking.ScheduleId);
                     if (schedule != null)
                     {
                         schedule.AvailableSeats -= lockedSeats.Count;
                         await _scheduleRepository.UpdateAsync(schedule);
                     }
+                }
+                // Send booking confirmation email
+                var user = await _userRepository.GetByIdAsync(booking.UserId);
+                if (user != null && schedule != null)
+                {
+                    await _emailService.SendBookingConfirmationAsync(
+                        toEmail: user.Email,
+                        userName: user.FullName,
+                        pnr: booking.PNR,
+                        source: schedule.Route?.Source ?? string.Empty,
+                        destination: schedule.Route?.Destination ?? string.Empty,
+                        travelDate: schedule.TravelDate,
+                        departureTime: schedule.DepartureTime.ToString(@"hh\:mm"),
+                        arrivalTime: schedule.ArrivalTime.ToString(@"hh\:mm"),
+                        numberOfSeats: booking.NumberOfSeats,
+                        totalAmount: booking.TotalAmount,
+                        promoCode: booking.PromoCodeUsed,
+                        discountAmount: booking.DiscountAmount);
                 }
                 // ????????????????
             }
