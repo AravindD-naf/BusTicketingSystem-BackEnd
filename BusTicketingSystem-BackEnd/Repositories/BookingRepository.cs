@@ -56,6 +56,7 @@ namespace BusTicketingSystem.Repositories
                 .Include(b => b.User)
                 .Include(b => b.Seats)
                 .Include(b => b.Passengers)
+                .Include(b => b.Refund)
                 .FirstOrDefaultAsync(b =>
                     b.BookingId == bookingId &&
                     !b.IsDeleted);

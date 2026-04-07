@@ -12,6 +12,7 @@ namespace BusTicketingSystem.Interfaces.Services
             string departureTime,
             string arrivalTime,
             int numberOfSeats,
+            List<string> seatNumbers,
             decimal baseFare,
             decimal discountAmount,
             decimal gstAmount,
