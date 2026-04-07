@@ -341,7 +341,16 @@ namespace BusTicketingSystem.Services
                     Name = $"{p.FirstName} {p.LastName}".Trim(),
                     Age = p.Age ?? 0,
                     Gender = p.Gender
-                }).ToList()
+                }).ToList(),
+                Refund = booking.Refund == null ? null : new BookingRefundDto
+                {
+                    RefundId         = booking.Refund.RefundId,
+                    RefundAmount     = booking.Refund.RefundAmount,
+                    CancellationFee  = booking.Refund.CancellationFee,
+                    RefundPercentage = booking.Refund.RefundPercentage,
+                    Status           = booking.Refund.Status.ToString(),
+                    ProcessedAt      = booking.Refund.ProcessedAt
+                }
             };
 
             return ApiResponse<BookingDetailResponseDto>

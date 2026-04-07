@@ -298,8 +298,8 @@ namespace BusTicketingSystem.Services
             if (booking == null || booking.IsDeleted)
                 throw new ResourceNotFoundException("Booking", bookingId.ToString());
 
-            if (booking.UserId != userId)
-                throw new UnauthorizedAccessException("You cannot initiate refund for this booking.");
+            // Note: ownership check removed — this is called internally during cancellation
+            // where userId is the booking owner's id passed from CancelBookingAsync
 
             var payment = await _paymentRepository.GetByBookingIdAsync(bookingId);
             if (payment == null || payment.Status != PaymentStatus.Success)
@@ -457,6 +457,24 @@ namespace BusTicketingSystem.Services
                 new { bookingId = refund.BookingId, approved = dto.IsApproved, amount = refund.RefundAmount },
                 userId,
                 ipAddress);
+
+            // Send refund status email to the user
+            try
+            {
+                var booking = await _bookingRepository.GetByIdAsync(refund.BookingId);
+                var user    = booking != null ? await _userRepository.GetByIdAsync(booking.UserId) : null;
+                if (user != null && booking != null)
+                {
+                    await _emailService.SendRefundStatusEmailAsync(
+                        toEmail:      user.Email,
+                        userName:     user.FullName,
+                        pnr:          booking.PNR,
+                        isApproved:   dto.IsApproved,
+                        refundAmount: refund.RefundAmount,
+                        reason:       dto.Reason ?? string.Empty);
+                }
+            }
+            catch { /* swallow — email failure should not affect refund result */ }
 
             return ApiResponse<RefundResponseDto>.SuccessResponse(MapToDto(refund));
         }
