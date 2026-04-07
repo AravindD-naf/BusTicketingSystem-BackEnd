@@ -1,4 +1,4 @@
-﻿using BusTicketingSystem.Interfaces.Services;
+using BusTicketingSystem.Interfaces.Services;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
@@ -58,11 +58,11 @@ namespace BusTicketingSystem.Services
 
         private async Task SendEmailAsync(string toEmail, string toName, string subject, string htmlBody)
         {
-            var s         = _config.GetSection("SmtpSettings");
-            var host      = s["Host"]!;
-            var port      = int.Parse(s["Port"]!);
-            var username  = s["Username"]!;
-            var password  = s["Password"]!;
+            var s        = _config.GetSection("SmtpSettings");
+            var host     = s["Host"]!;
+            var port     = int.Parse(s["Port"]!);
+            var username = s["Username"]!;
+            var password = s["Password"]!;
             var fromEmail = s["FromEmail"]!;
             var fromName  = s["FromName"] ?? "Bus Ticketing System";
 
@@ -140,7 +140,7 @@ namespace BusTicketingSystem.Services
                 ? $@"<tr style='background:#e8f5e9;'><td style='padding:8px;color:#555;'>Refund Amount</td><td style='padding:8px;font-weight:bold;color:#2e7d32;'>&#8377;{refundAmount:F2} ({refundPercentage}%)</td></tr>
         <tr><td style='padding:8px;color:#555;'>Cancellation Fee</td><td style='padding:8px;color:#c62828;'>&#8377;{cancellationFee:F2}</td></tr>
         <tr style='background:#f0f0f0;'><td colspan='2' style='padding:8px;color:#555;font-size:13px;'>The refund of <strong>&#8377;{refundAmount:F2}</strong> will be credited to your wallet shortly.</td></tr>"
-                : @"<tr style='background:#fff3e0;'><td style='padding:8px;color:#555;'>Refund Amount</td><td style='padding:8px;font-weight:bold;color:#e65100;'>&#8377;0.00 (0%)</td></tr>
+                : $@"<tr style='background:#fff3e0;'><td style='padding:8px;color:#555;'>Refund Amount</td><td style='padding:8px;font-weight:bold;color:#e65100;'>&#8377;0.00 (0%)</td></tr>
         <tr><td colspan='2' style='padding:8px;color:#555;font-size:13px;'>As per our cancellation policy, no refund is applicable for cancellations made within the non-refundable window.</td></tr>";
 
             var reasonRow = !string.IsNullOrWhiteSpace(cancellationReason)
