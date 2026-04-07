@@ -228,6 +228,14 @@ namespace BusTicketingSystem.Controllers
             return Ok(result);
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpPost("{bookingId}/refund/initiate")]
+        public async Task<IActionResult> InitiateRefund(int bookingId)
+        {
+            var result = await _paymentService.InitiateRefundAsync(bookingId, GetUserId(), GetIpAddress());
+            return Ok(result);
+        }
+
         #endregion
 
         private int GetUserId() =>
