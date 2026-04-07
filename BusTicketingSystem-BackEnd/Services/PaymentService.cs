@@ -298,13 +298,11 @@ namespace BusTicketingSystem.Services
             if (booking == null || booking.IsDeleted)
                 throw new ResourceNotFoundException("Booking", bookingId.ToString());
 
-            // Note: ownership check removed — this is called internally during cancellation
-            // where userId is the booking owner's id passed from CancelBookingAsync
-
+            // Fetch payment directly — do not rely on booking navigation property
             var payment = await _paymentRepository.GetByBookingIdAsync(bookingId);
             if (payment == null || payment.Status != PaymentStatus.Success)
                 throw new RefundOperationException(
-                    "Can only refund for confirmed payments",
+                    $"Cannot refund booking {bookingId}: payment not found or not successful (status: {payment?.Status})",
                     RefundOperationException.RefundErrorType.InvalidRefund);
 
             var existingRefund = await _refundRepository.GetByBookingIdAsync(bookingId);

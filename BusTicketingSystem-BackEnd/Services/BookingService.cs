@@ -20,6 +20,7 @@ namespace BusTicketingSystem.Services
         private readonly IEmailService _emailService;
         private readonly IUserRepository _userRepository;
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<BookingService> _logger;
 
         public BookingService(
             IBookingRepository bookingRepository,
@@ -30,7 +31,8 @@ namespace BusTicketingSystem.Services
             IPaymentService paymentService,
             IEmailService emailService,
             IUserRepository userRepository,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            ILogger<BookingService> logger)
         {
             _bookingRepository = bookingRepository;
             _scheduleRepository = scheduleRepository;
@@ -40,6 +42,7 @@ namespace BusTicketingSystem.Services
             _emailService = emailService;
             _userRepository = userRepository;
             _context = context;
+            _logger = logger;
         }
 
 
@@ -455,10 +458,14 @@ namespace BusTicketingSystem.Services
                                 // Admin cancellation: 100% paid amount + 20% bonus, credited to wallet instantly
                                 await _paymentService.InitiateAdminRefundAsync(bookingId, userId, ipAddress);
                             else
-                                // Customer cancellation: standard policy-based refund (pending approval)
-                                await _paymentService.InitiateRefundAsync(bookingId, userId, ipAddress);
+                                // Customer cancellation: pass booking.UserId (the owner) not userId (the canceller)
+                                await _paymentService.InitiateRefundAsync(bookingId, booking.UserId, ipAddress);
                         }
-                        catch { /* swallow — refund failure should not un-cancel the booking */ }
+                        catch (Exception ex)
+                        {
+                            // Log but don't un-cancel — refund failure is non-fatal
+                            _logger.LogError(ex, "Refund creation failed for booking {BookingId}", bookingId);
+                        }
                     }
 
                     // Send cancellation email to the user
