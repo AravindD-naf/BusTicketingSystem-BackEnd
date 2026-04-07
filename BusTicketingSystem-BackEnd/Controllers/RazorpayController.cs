@@ -38,13 +38,18 @@ namespace BusTicketingSystem.Controllers
         [HttpPost("create-order")]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest req)
         {
-            var keyId     = _config["Razorpay:KeyId"]     ?? "";
-            var keySecret = _config["Razorpay:KeySecret"] ?? "";
+            var keyId     = _config["Razorpay:KeyId"]     ?? string.Empty;
+            var keySecret = _config["Razorpay:KeySecret"] ?? string.Empty;
 
-            if (string.IsNullOrWhiteSpace(keyId) || keyId.Contains("yourkeyid") ||
-                string.IsNullOrWhiteSpace(keySecret) || keySecret.Contains("yourkeysecret"))
+            // Validate that real credentials are configured
+            if (string.IsNullOrWhiteSpace(keyId) || 
+                keyId.Equals("yourkeyid", StringComparison.OrdinalIgnoreCase) ||
+                string.IsNullOrWhiteSpace(keySecret) || 
+                keySecret.Equals("yourkeysecret", StringComparison.OrdinalIgnoreCase))
+            {
                 return BadRequest(ApiResponse<object>.FailureResponse(
-                    "Razorpay API keys are not configured. Add your test keys to appsettings.json."));
+                    "Razorpay API keys are not configured. Please update appsettings.json with your test/live keys from https://dashboard.razorpay.com/"));
+            }
 
             var amountInPaise = (int)(req.Amount * 100);
 
