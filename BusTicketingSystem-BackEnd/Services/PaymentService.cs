@@ -1,4 +1,4 @@
-using BusTicketingSystem.DTOs.Requests;
+﻿using BusTicketingSystem.DTOs.Requests;
 using BusTicketingSystem.DTOs.Responses;
 using BusTicketingSystem.Exceptions;
 using BusTicketingSystem.Interfaces.Repositories;
@@ -99,7 +99,7 @@ namespace BusTicketingSystem.Services
 
             decimal finalAmount = booking.TotalAmount - discountAmount;
 
-            // Compute expected grand total (base fare - discount + 6% tax + ₹20 convenience fee)
+            // Compute expected grand total (base fare - discount + 6% tax + â‚¹20 convenience fee)
             // and validate against what the frontend sent
             decimal tax = Math.Round(finalAmount * 0.06m);
             const decimal convenienceFee = 20m;
@@ -209,6 +209,17 @@ namespace BusTicketingSystem.Services
                 var user = await _userRepository.GetByIdAsync(booking.UserId);
                 if (user != null && schedule != null)
                 {
+                    // Grand total = what Razorpay/wallet actually charged, stored on payment.Amount
+                    decimal emailBaseFare      = booking.TotalAmount;
+                    decimal emailDiscount      = booking.DiscountAmount;
+                    decimal emailFareAfterDisc = emailBaseFare - emailDiscount;
+                    decimal emailGst           = Math.Round(emailFareAfterDisc * 0.06m, 2);
+                    const decimal emailConvFee = 20m;
+                    // Use payment.Amount as the authoritative grand total (what was actually charged)
+                    decimal emailGrandTotal    = payment.Amount > 0
+                        ? payment.Amount
+                        : emailFareAfterDisc + emailGst + emailConvFee;
+
                     await _emailService.SendBookingConfirmationAsync(
                         toEmail: user.Email,
                         userName: user.FullName,
@@ -219,11 +230,13 @@ namespace BusTicketingSystem.Services
                         departureTime: schedule.DepartureTime.ToString(@"hh\:mm"),
                         arrivalTime: schedule.ArrivalTime.ToString(@"hh\:mm"),
                         numberOfSeats: booking.NumberOfSeats,
-                        totalAmount: booking.TotalAmount,
-                        promoCode: booking.PromoCodeUsed,
-                        discountAmount: booking.DiscountAmount);
+                        baseFare: emailBaseFare,
+                        discountAmount: emailDiscount,
+                        gstAmount: emailGst,
+                        convenienceFee: emailConvFee,
+                        grandTotal: emailGrandTotal,
+                        promoCode: booking.PromoCodeUsed);
                 }
-                // ????????????????
             }
             else
             {
@@ -330,7 +343,7 @@ namespace BusTicketingSystem.Services
 
             var payment = await _paymentRepository.GetByBookingIdAsync(bookingId);
             if (payment == null || payment.Status != PaymentStatus.Success)
-                // No payment was made — nothing to refund
+                // No payment was made â€” nothing to refund
                 return ApiResponse<RefundResponseDto>.SuccessResponse((RefundResponseDto)null!);
 
             var existingRefund = await _refundRepository.GetByBookingIdAsync(bookingId);
@@ -350,7 +363,7 @@ namespace BusTicketingSystem.Services
                 CancellationFee = 0,
                 RefundPercentage = 120, // 100% + 20% bonus
                 Status          = RefundStatus.Completed, // auto-approved
-                Reason          = "Booking cancelled by Admin — full refund + 20% compensation",
+                Reason          = "Booking cancelled by Admin â€” full refund + 20% compensation",
                 RequestedAt     = DateTime.UtcNow,
                 ProcessedAt     = DateTime.UtcNow
             };
@@ -368,7 +381,7 @@ namespace BusTicketingSystem.Services
                     bookingId.ToString(),
                     ipAddress);
             }
-            catch { /* swallow — refund record is saved; wallet credit can be retried */ }
+            catch { /* swallow â€” refund record is saved; wallet credit can be retried */ }
 
             await _auditRepository.LogAuditAsync(
                 "ADMIN_REFUND", "Refund", refund.RefundId.ToString(), null,
@@ -403,7 +416,7 @@ namespace BusTicketingSystem.Services
                     $"Cannot confirm refund with status: {refund.Status}",
                     RefundOperationException.RefundErrorType.ProcessingError);
 
-            // Credit wallet if approved — refund goes directly to user's wallet
+            // Credit wallet if approved â€” refund goes directly to user's wallet
             refund.ProcessedAt = DateTime.UtcNow;
             refund.Status = dto.IsApproved ? RefundStatus.Completed : RefundStatus.Rejected;
             refund.Reason = dto.Reason;
@@ -425,7 +438,7 @@ namespace BusTicketingSystem.Services
                             refund.BookingId.ToString(),
                             ipAddress);
                     }
-                    catch { /* swallow — refund record is already saved */ }
+                    catch { /* swallow â€” refund record is already saved */ }
                 }
             }
 
@@ -490,10 +503,23 @@ namespace BusTicketingSystem.Services
             if (schedule == null)
                 throw new ResourceNotFoundException("Schedule", booking.ScheduleId.ToString());
 
+            // Use the actual amount paid (includes GST + convenience fee) for refund calculation
+            var payment = await _paymentRepository.GetByBookingIdAsync(bookingId);
+            decimal amountPaid = (payment != null && payment.Status == PaymentStatus.Success)
+                ? payment.Amount
+                : booking.TotalAmount;
+
             var departure = schedule.TravelDate.Add(schedule.DepartureTime);
-            var hoursToDeparture = (int)(departure - DateTime.UtcNow).TotalHours;
+            // Use double for precision; negative means departure already passed
+            double hoursToDepartureDouble = (departure - DateTime.UtcNow).TotalHours;
+            int hoursToDeparture = (int)Math.Floor(hoursToDepartureDouble);
+
+            // Past departure — no refund
+            if (hoursToDeparture < 0)
+                return (0, 0, amountPaid);
 
             // Get applicable cancellation policy
+            // Policy with the highest HoursBeforeDeparture that is <= current hours remaining
             var policies = await _policyRepository.GetAllActiveAsync();
             var applicablePolicy = policies
                 .Where(p => p.HoursBeforeDeparture <= hoursToDeparture)
@@ -502,15 +528,15 @@ namespace BusTicketingSystem.Services
 
             if (applicablePolicy == null)
             {
-                // Default: 100% refund if > 48 hrs, 75% for 24-48, 50% for 0-24, 0% after departure
-                if (hoursToDeparture > 48) return (booking.TotalAmount, 100, 0);
-                if (hoursToDeparture > 24) return ((booking.TotalAmount * 0.75m), 75, (booking.TotalAmount * 0.25m));
-                if (hoursToDeparture > 0) return ((booking.TotalAmount * 0.5m), 50, (booking.TotalAmount * 0.5m));
-                return (0, 0, booking.TotalAmount);
+                // Default policy when no custom policy is configured
+                if (hoursToDeparture > 48) return (amountPaid, 100, 0);
+                if (hoursToDeparture > 24) return (Math.Round(amountPaid * 0.75m, 2), 75, Math.Round(amountPaid * 0.25m, 2));
+                if (hoursToDeparture > 0)  return (Math.Round(amountPaid * 0.50m, 2), 50, Math.Round(amountPaid * 0.50m, 2));
+                return (0, 0, amountPaid);
             }
 
-            var refundAmount = (booking.TotalAmount * applicablePolicy.RefundPercentage) / 100;
-            var cancellationFee = booking.TotalAmount - refundAmount;
+            var refundAmount    = Math.Round((amountPaid * applicablePolicy.RefundPercentage) / 100, 2);
+            var cancellationFee = Math.Round(amountPaid - refundAmount, 2);
 
             return (refundAmount, applicablePolicy.RefundPercentage, cancellationFee);
         }

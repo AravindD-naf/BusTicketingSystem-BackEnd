@@ -17,6 +17,8 @@ namespace BusTicketingSystem.Services
         private readonly ISeatRepository _seatRepository;
         private readonly IAuditRepository _auditRepository;
         private readonly IPaymentService _paymentService;
+        private readonly IEmailService _emailService;
+        private readonly IUserRepository _userRepository;
         private readonly ApplicationDbContext _context;
 
         public BookingService(
@@ -26,6 +28,8 @@ namespace BusTicketingSystem.Services
             ISeatService seatService,
             IAuditRepository auditRepository,
             IPaymentService paymentService,
+            IEmailService emailService,
+            IUserRepository userRepository,
             ApplicationDbContext context)
         {
             _bookingRepository = bookingRepository;
@@ -33,6 +37,8 @@ namespace BusTicketingSystem.Services
             _seatRepository = seatRepository;
             _auditRepository = auditRepository;
             _paymentService = paymentService;
+            _emailService = emailService;
+            _userRepository = userRepository;
             _context = context;
         }
 
@@ -445,6 +451,32 @@ namespace BusTicketingSystem.Services
                         }
                         catch { /* swallow — refund failure should not un-cancel the booking */ }
                     }
+
+                    // Send cancellation email to the user
+                    try
+                    {
+                        var user = await _userRepository.GetByIdAsync(booking.UserId);
+                        if (user != null && schedule.Route != null)
+                        {
+                            // Fetch refund details (may be null if booking was not confirmed/paid)
+                            var refundResult = await _paymentService.GetRefundByBookingIdAsync(bookingId);
+                            var refund = refundResult?.Data;
+
+                            await _emailService.SendCancellationEmailAsync(
+                                toEmail: user.Email,
+                                userName: user.FullName,
+                                pnr: booking.PNR,
+                                source: schedule.Route.Source,
+                                destination: schedule.Route.Destination,
+                                travelDate: schedule.TravelDate,
+                                amountPaid: refund != null ? (refund.RefundAmount + refund.CancellationFee) : 0m,
+                                refundAmount: refund?.RefundAmount ?? 0m,
+                                refundPercentage: refund?.RefundPercentage ?? 0,
+                                cancellationFee: refund?.CancellationFee ?? 0m,
+                                cancellationReason: booking.CancellationReason ?? string.Empty);
+                        }
+                    }
+                    catch { /* swallow — email failure should not affect cancellation result */ }
 
                     return ApiResponse<bool>.SuccessResponse(true);
                 }
