@@ -458,9 +458,14 @@ namespace BusTicketingSystem.Services
                         var user = await _userRepository.GetByIdAsync(booking.UserId);
                         if (user != null && schedule.Route != null)
                         {
-                            // Fetch refund details (may be null if booking was not confirmed/paid)
+                            // Fetch refund — created above, so it should exist for confirmed bookings
                             var refundResult = await _paymentService.GetRefundByBookingIdAsync(bookingId);
                             var refund = refundResult?.Data;
+
+                            // Get the actual amount paid from the payment record
+                            decimal amountPaid = 0m;
+                            if (refund != null)
+                                amountPaid = refund.RefundAmount + refund.CancellationFee;
 
                             await _emailService.SendCancellationEmailAsync(
                                 toEmail: user.Email,
@@ -469,7 +474,7 @@ namespace BusTicketingSystem.Services
                                 source: schedule.Route.Source,
                                 destination: schedule.Route.Destination,
                                 travelDate: schedule.TravelDate,
-                                amountPaid: refund != null ? (refund.RefundAmount + refund.CancellationFee) : 0m,
+                                amountPaid: amountPaid,
                                 refundAmount: refund?.RefundAmount ?? 0m,
                                 refundPercentage: refund?.RefundPercentage ?? 0,
                                 cancellationFee: refund?.CancellationFee ?? 0m,

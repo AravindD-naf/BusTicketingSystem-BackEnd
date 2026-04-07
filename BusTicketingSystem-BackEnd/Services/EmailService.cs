@@ -20,13 +20,14 @@ namespace BusTicketingSystem.Services
             string toEmail, string userName, string pnr,
             string source, string destination, DateTime travelDate,
             string departureTime, string arrivalTime, int numberOfSeats,
+            List<string> seatNumbers,
             decimal baseFare, decimal discountAmount, decimal gstAmount,
             decimal convenienceFee, decimal grandTotal, string? promoCode)
         {
             try
             {
                 var body = BuildConfirmationBody(userName, pnr, source, destination, travelDate,
-                    departureTime, arrivalTime, numberOfSeats, baseFare, discountAmount,
+                    departureTime, arrivalTime, numberOfSeats, seatNumbers, baseFare, discountAmount,
                     gstAmount, convenienceFee, grandTotal, promoCode);
                 await SendEmailAsync(toEmail, userName, $"Booking Confirmed - PNR: {pnr}", body);
                 _logger.LogInformation("Booking confirmation email sent to {Email} for PNR {PNR}", toEmail, pnr);
@@ -58,11 +59,11 @@ namespace BusTicketingSystem.Services
 
         private async Task SendEmailAsync(string toEmail, string toName, string subject, string htmlBody)
         {
-            var s        = _config.GetSection("SmtpSettings");
-            var host     = s["Host"]!;
-            var port     = int.Parse(s["Port"]!);
-            var username = s["Username"]!;
-            var password = s["Password"]!;
+            var s         = _config.GetSection("SmtpSettings");
+            var host      = s["Host"]!;
+            var port      = int.Parse(s["Port"]!);
+            var username  = s["Username"]!;
+            var password  = s["Password"]!;
             var fromEmail = s["FromEmail"]!;
             var fromName  = s["FromName"] ?? "Bus Ticketing System";
 
@@ -82,13 +83,19 @@ namespace BusTicketingSystem.Services
         private static string BuildConfirmationBody(
             string userName, string pnr, string source, string destination,
             DateTime travelDate, string departureTime, string arrivalTime,
-            int numberOfSeats, decimal baseFare, decimal discountAmount,
+            int numberOfSeats, List<string> seatNumbers,
+            decimal baseFare, decimal discountAmount,
             decimal gstAmount, decimal convenienceFee, decimal grandTotal, string? promoCode)
         {
             decimal fareAfterDiscount = baseFare - discountAmount;
+
             var promoRow = !string.IsNullOrEmpty(promoCode) && discountAmount > 0
                 ? $"<tr><td style='padding:8px;color:#555;'>Promo Discount ({promoCode})</td><td style='padding:8px;font-weight:bold;color:#2e7d32;'>- &#8377;{discountAmount:F2}</td></tr>"
                 : string.Empty;
+
+            var seatDisplay = seatNumbers != null && seatNumbers.Count > 0
+                ? string.Join(", ", seatNumbers)
+                : numberOfSeats.ToString();
 
             return $@"<!DOCTYPE html><html><head><meta charset='utf-8'/></head>
 <body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;'>
@@ -107,7 +114,8 @@ namespace BusTicketingSystem.Services
         <tr><td style='padding:8px;color:#555;'>Travel Date</td><td style='padding:8px;font-weight:bold;'>{travelDate:dddd, MMMM dd yyyy}</td></tr>
         <tr style='background:#f0f0f0;'><td style='padding:8px;color:#555;'>Departure</td><td style='padding:8px;font-weight:bold;'>{departureTime}</td></tr>
         <tr><td style='padding:8px;color:#555;'>Arrival</td><td style='padding:8px;font-weight:bold;'>{arrivalTime}</td></tr>
-        <tr style='background:#f0f0f0;'><td style='padding:8px;color:#555;'>Seats</td><td style='padding:8px;font-weight:bold;'>{numberOfSeats}</td></tr>
+        <tr style='background:#f0f0f0;'><td style='padding:8px;color:#555;'>No. of Seats</td><td style='padding:8px;font-weight:bold;'>{numberOfSeats}</td></tr>
+        <tr><td style='padding:8px;color:#555;'>Seat Numbers</td><td style='padding:8px;font-weight:bold;color:#1a73e8;'>{seatDisplay}</td></tr>
       </table>
     </div>
     <p style='color:#333;font-weight:bold;margin-bottom:4px;'>Price Breakdown</p>
@@ -139,8 +147,8 @@ namespace BusTicketingSystem.Services
             string refundRows = refundAmount > 0
                 ? $@"<tr style='background:#e8f5e9;'><td style='padding:8px;color:#555;'>Refund Amount</td><td style='padding:8px;font-weight:bold;color:#2e7d32;'>&#8377;{refundAmount:F2} ({refundPercentage}%)</td></tr>
         <tr><td style='padding:8px;color:#555;'>Cancellation Fee</td><td style='padding:8px;color:#c62828;'>&#8377;{cancellationFee:F2}</td></tr>
-        <tr style='background:#f0f0f0;'><td colspan='2' style='padding:8px;color:#555;font-size:13px;'>The refund of <strong>&#8377;{refundAmount:F2}</strong> will be credited to your wallet shortly.</td></tr>"
-                : $@"<tr style='background:#fff3e0;'><td style='padding:8px;color:#555;'>Refund Amount</td><td style='padding:8px;font-weight:bold;color:#e65100;'>&#8377;0.00 (0%)</td></tr>
+        <tr style='background:#f0f0f0;'><td colspan='2' style='padding:8px;color:#555;font-size:13px;'>The refund of <strong>&#8377;{refundAmount:F2}</strong> will be credited to your BusMate Wallet shortly.</td></tr>"
+                : @"<tr style='background:#fff3e0;'><td style='padding:8px;color:#555;'>Refund Amount</td><td style='padding:8px;font-weight:bold;color:#e65100;'>&#8377;0.00 (0%)</td></tr>
         <tr><td colspan='2' style='padding:8px;color:#555;font-size:13px;'>As per our cancellation policy, no refund is applicable for cancellations made within the non-refundable window.</td></tr>";
 
             var reasonRow = !string.IsNullOrWhiteSpace(cancellationReason)

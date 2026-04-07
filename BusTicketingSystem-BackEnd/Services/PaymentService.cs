@@ -220,6 +220,12 @@ namespace BusTicketingSystem.Services
                         ? payment.Amount
                         : emailFareAfterDisc + emailGst + emailConvFee;
 
+                    // Collect seat numbers from the seats that were just confirmed
+                    var emailSeatNumbers = lockedSeats
+                        .Select(s => s.SeatNumber)
+                        .OrderBy(s => s)
+                        .ToList();
+
                     await _emailService.SendBookingConfirmationAsync(
                         toEmail: user.Email,
                         userName: user.FullName,
@@ -230,6 +236,7 @@ namespace BusTicketingSystem.Services
                         departureTime: schedule.DepartureTime.ToString(@"hh\:mm"),
                         arrivalTime: schedule.ArrivalTime.ToString(@"hh\:mm"),
                         numberOfSeats: booking.NumberOfSeats,
+                        seatNumbers: emailSeatNumbers,
                         baseFare: emailBaseFare,
                         discountAmount: emailDiscount,
                         gstAmount: emailGst,
