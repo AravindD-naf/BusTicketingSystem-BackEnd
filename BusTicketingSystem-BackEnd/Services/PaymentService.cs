@@ -426,7 +426,47 @@ namespace BusTicketingSystem.Services
             refund.Status = dto.IsApproved ? RefundStatus.Completed : RefundStatus.Rejected;
             refund.Reason = dto.Reason;
 
-            await _refundRepository.UpdateAsync(refund);
+            // Update booking status and release seats if approved
+            if (dto.IsApproved)
+            {
+                var booking = await _bookingRepository.GetByIdAsync(refund.BookingId);
+                if (booking != null && booking.BookingStatus == BookingStatus.CancellationRequested)
+                {
+                    // Set booking to cancelled and release seats
+                    booking.BookingStatus = BookingStatus.Cancelled;
+                    booking.LastStatusChangeAt = DateTime.UtcNow;
+                    await _bookingRepository.UpdateAsync(booking);
+
+                    // Release seats
+                    var seats = await _seatRepository.GetSeatsByScheduleIdAsync(booking.ScheduleId);
+                    var affectedSeats = seats
+                        .Where(s => s.BookingId == refund.BookingId && s.SeatStatus == "Booked")
+                        .ToList();
+
+                    if (affectedSeats.Count > 0)
+                    {
+                        var now = DateTime.UtcNow;
+                        foreach (var seat in affectedSeats)
+                        {
+                            seat.SeatStatus = "Available";
+                            seat.LockedByUserId = null;
+                            seat.LockedAt = null;
+                            seat.BookingId = null;
+                            seat.UpdatedAt = now;
+                        }
+                        await _seatRepository.UpdateManyAsync(affectedSeats);
+
+                        // Update schedule available seats
+                        var schedule = await _scheduleRepository.GetByIdAsync(booking.ScheduleId);
+                        if (schedule != null)
+                        {
+                            schedule.AvailableSeats += affectedSeats.Count;
+                            await _scheduleRepository.UpdateAsync(schedule);
+                        }
+                    }
+                }
+            }
+
             await _refundRepository.SaveChangesAsync();
 
             if (dto.IsApproved && refund.RefundAmount > 0)

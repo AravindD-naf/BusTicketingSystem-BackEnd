@@ -428,9 +428,25 @@ namespace BusTicketingSystem.Services
                             schedule.AvailableSeats += bookedCount;
                         }
                     }
-                    // ────────────────
-
-                    booking.BookingStatus = BookingStatus.Cancelled;
+                    // For confirmed bookings, set status to CancellationRequested and keep seats locked
+                    // For non-confirmed bookings, immediately cancel
+                    if (wasConfirmed)
+                    {
+                        booking.BookingStatus = BookingStatus.CancellationRequested;
+                    }
+                    else
+                    {
+                        booking.BookingStatus = BookingStatus.Cancelled;
+                        // Release seats for unpaid bookings
+                        if (affectedSeats.Count > 0)
+                        {
+                            var bookedCount = affectedSeats.Count(s => s.SeatStatus == "Booked");
+                            if (bookedCount > 0)
+                            {
+                                schedule.AvailableSeats += bookedCount;
+                            }
+                        }
+                    }
                     booking.LastStatusChangeAt = DateTime.UtcNow;
                     booking.CancelledBy = role;
 
@@ -438,11 +454,11 @@ namespace BusTicketingSystem.Services
                     await _bookingRepository.UpdateAsync(booking);
 
                     await _auditRepository.LogAuditAsync(
-                        "CANCEL",
+                        wasConfirmed && role == "Customer" ? "CANCEL_REQUEST" : "CANCEL",
                         "Booking",
                         booking.BookingId.ToString(),
                         null,
-                        new { bookingId, seatsReleased = affectedSeats.Count },
+                        new { bookingId, seatsReleased = affectedSeats.Count, wasConfirmed },
                         userId,
                         ipAddress);
 
@@ -455,11 +471,16 @@ namespace BusTicketingSystem.Services
                         try
                         {
                             if (role == "Admin")
+                            {
                                 // Admin cancellation: 100% paid amount + 20% bonus, credited to wallet instantly
                                 await _paymentService.InitiateAdminRefundAsync(bookingId, userId, ipAddress);
+                            }
                             else
-                                // Customer cancellation: pass booking.UserId (the owner) not userId (the canceller)
+                            {
+                                // Customer cancellation request: create refund with Pending status, no email yet
                                 await _paymentService.InitiateRefundAsync(bookingId, booking.UserId, ipAddress);
+                                // Note: Email will be sent after admin approval
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -468,36 +489,40 @@ namespace BusTicketingSystem.Services
                         }
                     }
 
-                    // Send cancellation email to the user
-                    try
+                    // Send cancellation email to the user only for immediate cancellations
+                    // (not for customer cancellation requests which need admin approval)
+                    if (role == "Admin" || !wasConfirmed)
                     {
-                        var user = await _userRepository.GetByIdAsync(booking.UserId);
-                        if (user != null && schedule.Route != null)
+                        try
                         {
-                            // Fetch refund — created above, so it should exist for confirmed bookings
-                            var refundResult = await _paymentService.GetRefundByBookingIdAsync(bookingId);
-                            var refund = refundResult?.Data;
+                            var user = await _userRepository.GetByIdAsync(booking.UserId);
+                            if (user != null && schedule.Route != null)
+                            {
+                                // Fetch refund — created above, so it should exist for confirmed bookings
+                                var refundResult = await _paymentService.GetRefundByBookingIdAsync(bookingId);
+                                var refund = refundResult?.Data;
 
-                            // Get the actual amount paid from the payment record
-                            decimal amountPaid = 0m;
-                            if (refund != null)
-                                amountPaid = refund.RefundAmount + refund.CancellationFee;
+                                // Get the actual amount paid from the payment record
+                                decimal amountPaid = 0m;
+                                if (refund != null)
+                                    amountPaid = refund.RefundAmount + refund.CancellationFee;
 
-                            await _emailService.SendCancellationEmailAsync(
-                                toEmail: user.Email,
-                                userName: user.FullName,
-                                pnr: booking.PNR,
-                                source: schedule.Route.Source,
-                                destination: schedule.Route.Destination,
-                                travelDate: schedule.TravelDate,
-                                amountPaid: amountPaid,
-                                refundAmount: refund?.RefundAmount ?? 0m,
-                                refundPercentage: refund?.RefundPercentage ?? 0,
-                                cancellationFee: refund?.CancellationFee ?? 0m,
-                                cancellationReason: booking.CancellationReason ?? string.Empty);
+                                await _emailService.SendCancellationEmailAsync(
+                                    toEmail: user.Email,
+                                    userName: user.FullName,
+                                    pnr: booking.PNR,
+                                    source: schedule.Route.Source,
+                                    destination: schedule.Route.Destination,
+                                    travelDate: schedule.TravelDate,
+                                    amountPaid: amountPaid,
+                                    refundAmount: refund?.RefundAmount ?? 0m,
+                                    refundPercentage: refund?.RefundPercentage ?? 0,
+                                    cancellationFee: refund?.CancellationFee ?? 0m,
+                                    cancellationReason: booking.CancellationReason ?? string.Empty);
+                            }
                         }
+                        catch { /* swallow — email failure should not affect cancellation result */ }
                     }
-                    catch { /* swallow — email failure should not affect cancellation result */ }
 
                     return ApiResponse<bool>.SuccessResponse(true);
                 }

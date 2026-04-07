@@ -16,6 +16,8 @@ namespace BusTicketingSystem.Models.Enums
 
         Expired = 5,
 
-        Refunded = 6
+        Refunded = 6,
+
+        CancellationRequested = 7
     }
 }
