@@ -209,6 +209,9 @@ namespace BusTicketingSystem.Services
                 var user = await _userRepository.GetByIdAsync(booking.UserId);
                 if (user != null && schedule != null)
                 {
+                    // Use the actual grand total stored on the payment record (base - discount + 6% GST + ₹20 convenience fee)
+                    decimal emailTotal = payment.Amount;
+
                     await _emailService.SendBookingConfirmationAsync(
                         toEmail: user.Email,
                         userName: user.FullName,
@@ -219,9 +222,12 @@ namespace BusTicketingSystem.Services
                         departureTime: schedule.DepartureTime.ToString(@"hh\:mm"),
                         arrivalTime: schedule.ArrivalTime.ToString(@"hh\:mm"),
                         numberOfSeats: booking.NumberOfSeats,
-                        totalAmount: booking.TotalAmount,
-                        promoCode: booking.PromoCodeUsed,
-                        discountAmount: booking.DiscountAmount);
+                        baseFare: booking.TotalAmount,
+                        discountAmount: booking.DiscountAmount,
+                        gstAmount: Math.Round((booking.TotalAmount - booking.DiscountAmount) * 0.06m),
+                        convenienceFee: 20m,
+                        grandTotal: emailTotal,
+                        promoCode: booking.PromoCodeUsed);
                 }
                 // ????????????????
             }
@@ -490,6 +496,12 @@ namespace BusTicketingSystem.Services
             if (schedule == null)
                 throw new ResourceNotFoundException("Schedule", booking.ScheduleId.ToString());
 
+            // Use the actual amount paid (includes GST + convenience fee) for refund calculation
+            var payment = await _paymentRepository.GetByBookingIdAsync(bookingId);
+            decimal amountPaid = (payment != null && payment.Status == PaymentStatus.Success)
+                ? payment.Amount
+                : booking.TotalAmount;
+
             var departure = schedule.TravelDate.Add(schedule.DepartureTime);
             var hoursToDeparture = (int)(departure - DateTime.UtcNow).TotalHours;
 
@@ -503,14 +515,14 @@ namespace BusTicketingSystem.Services
             if (applicablePolicy == null)
             {
                 // Default: 100% refund if > 48 hrs, 75% for 24-48, 50% for 0-24, 0% after departure
-                if (hoursToDeparture > 48) return (booking.TotalAmount, 100, 0);
-                if (hoursToDeparture > 24) return ((booking.TotalAmount * 0.75m), 75, (booking.TotalAmount * 0.25m));
-                if (hoursToDeparture > 0) return ((booking.TotalAmount * 0.5m), 50, (booking.TotalAmount * 0.5m));
-                return (0, 0, booking.TotalAmount);
+                if (hoursToDeparture > 48) return (amountPaid, 100, 0);
+                if (hoursToDeparture > 24) return (Math.Round(amountPaid * 0.75m, 2), 75, Math.Round(amountPaid * 0.25m, 2));
+                if (hoursToDeparture > 0)  return (Math.Round(amountPaid * 0.5m, 2),  50, Math.Round(amountPaid * 0.5m, 2));
+                return (0, 0, amountPaid);
             }
 
-            var refundAmount = (booking.TotalAmount * applicablePolicy.RefundPercentage) / 100;
-            var cancellationFee = booking.TotalAmount - refundAmount;
+            var refundAmount    = Math.Round((amountPaid * applicablePolicy.RefundPercentage) / 100, 2);
+            var cancellationFee = amountPaid - refundAmount;
 
             return (refundAmount, applicablePolicy.RefundPercentage, cancellationFee);
         }
