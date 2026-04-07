@@ -57,6 +57,25 @@ namespace BusTicketingSystem.Services
             }
         }
 
+        public async Task SendRefundStatusEmailAsync(
+            string toEmail, string userName, string pnr,
+            bool isApproved, decimal refundAmount, string reason)
+        {
+            try
+            {
+                var subject = isApproved
+                    ? $"Refund Approved - PNR: {pnr}"
+                    : $"Refund Rejected - PNR: {pnr}";
+                var body = BuildRefundStatusBody(userName, pnr, isApproved, refundAmount, reason);
+                await SendEmailAsync(toEmail, userName, subject, body);
+                _logger.LogInformation("Refund status email sent to {Email} for PNR {PNR}", toEmail, pnr);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send refund status email to {Email} for PNR {PNR}", toEmail, pnr);
+            }
+        }
+
         private async Task SendEmailAsync(string toEmail, string toName, string subject, string htmlBody)
         {
             var s         = _config.GetSection("SmtpSettings");
@@ -175,6 +194,52 @@ namespace BusTicketingSystem.Services
         {refundRows}
       </table>
     </div>
+    <p style='color:#999;font-size:12px;margin-top:24px;'>This is an automated email. Please do not reply to this message.</p>
+  </div>
+  <div style='background:#f4f4f4;padding:12px;text-align:center;'>
+    <p style='color:#aaa;font-size:12px;margin:0;'>&#169; {DateTime.UtcNow.Year} Bus Ticketing System. All rights reserved.</p>
+  </div>
+</div>
+</body></html>";
+        }
+        private static string BuildRefundStatusBody(
+            string userName, string pnr, bool isApproved, decimal refundAmount, string reason)
+        {
+            var headerColor = isApproved ? "#2e7d32" : "#d32f2f";
+            var title       = isApproved ? "Refund Approved ✅" : "Refund Rejected ❌";
+            var statusColor = isApproved ? "#2e7d32" : "#d32f2f";
+            var statusText  = isApproved ? "Approved" : "Rejected";
+
+            var amountRow = isApproved
+                ? $"<tr style='background:#e8f5e9;'><td style='padding:8px;color:#555;'>Refund Amount</td><td style='padding:8px;font-weight:bold;color:#2e7d32;'>&#8377;{refundAmount:F2}</td></tr>"
+                : string.Empty;
+
+            var walletNote = isApproved
+                ? $"<p style='color:#2e7d32;font-size:14px;'>&#8377;{refundAmount:F2} has been credited to your BusMate Wallet.</p>"
+                : "<p style='color:#555;font-size:14px;'>Your refund request has been reviewed and rejected. Please contact support if you have any questions.</p>";
+
+            var reasonRow = !string.IsNullOrWhiteSpace(reason)
+                ? $"<tr><td style='padding:8px;color:#555;'>Reason</td><td style='padding:8px;'>{reason}</td></tr>"
+                : string.Empty;
+
+            return $@"<!DOCTYPE html><html><head><meta charset='utf-8'/></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;'>
+<div style='max-width:600px;margin:30px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);'>
+  <div style='background:{headerColor};padding:24px;text-align:center;'>
+    <h1 style='color:#fff;margin:0;font-size:22px;'>{title}</h1>
+  </div>
+  <div style='padding:24px;'>
+    <p style='font-size:16px;color:#333;'>Hi <strong>{userName}</strong>,</p>
+    <p style='color:#555;'>Your refund request for booking PNR <strong>{pnr}</strong> has been processed.</p>
+    <div style='background:#f9f9f9;border-radius:6px;padding:16px;margin:20px 0;'>
+      <table style='width:100%;border-collapse:collapse;'>
+        <tr style='background:#f0f0f0;'><td style='padding:8px;color:#555;'>PNR</td><td style='padding:8px;font-weight:bold;'>{pnr}</td></tr>
+        <tr><td style='padding:8px;color:#555;'>Refund Status</td><td style='padding:8px;font-weight:bold;color:{statusColor};'>{statusText}</td></tr>
+        {amountRow}
+        {reasonRow}
+      </table>
+    </div>
+    {walletNote}
     <p style='color:#999;font-size:12px;margin-top:24px;'>This is an automated email. Please do not reply to this message.</p>
   </div>
   <div style='background:#f4f4f4;padding:12px;text-align:center;'>

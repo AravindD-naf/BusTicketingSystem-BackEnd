@@ -95,6 +95,9 @@
 
         // Passenger details
         public List<PassengerSummaryDto> Passengers { get; set; } = new();
+
+        // Refund details (populated for cancelled bookings)
+        public BookingRefundDto? Refund { get; set; }
     }
 
     public class PassengerSummaryDto

@@ -32,5 +32,13 @@ namespace BusTicketingSystem.Interfaces.Services
             int refundPercentage,
             decimal cancellationFee,
             string cancellationReason);
+
+        Task SendRefundStatusEmailAsync(
+            string toEmail,
+            string userName,
+            string pnr,
+            bool isApproved,
+            decimal refundAmount,
+            string reason);
     }
 }
