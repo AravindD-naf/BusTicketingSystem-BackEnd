@@ -209,13 +209,16 @@ namespace BusTicketingSystem.Services
                 var user = await _userRepository.GetByIdAsync(booking.UserId);
                 if (user != null && schedule != null)
                 {
-                    // Recompute breakdown so the email always shows the correct amounts
+                    // Grand total = what Razorpay/wallet actually charged, stored on payment.Amount
                     decimal emailBaseFare      = booking.TotalAmount;
                     decimal emailDiscount      = booking.DiscountAmount;
                     decimal emailFareAfterDisc = emailBaseFare - emailDiscount;
                     decimal emailGst           = Math.Round(emailFareAfterDisc * 0.06m, 2);
                     const decimal emailConvFee = 20m;
-                    decimal emailGrandTotal    = emailFareAfterDisc + emailGst + emailConvFee;
+                    // Use payment.Amount as the authoritative grand total (what was actually charged)
+                    decimal emailGrandTotal    = payment.Amount > 0
+                        ? payment.Amount
+                        : emailFareAfterDisc + emailGst + emailConvFee;
 
                     await _emailService.SendBookingConfirmationAsync(
                         toEmail: user.Email,
@@ -507,9 +510,16 @@ namespace BusTicketingSystem.Services
                 : booking.TotalAmount;
 
             var departure = schedule.TravelDate.Add(schedule.DepartureTime);
-            var hoursToDeparture = (int)(departure - DateTime.UtcNow).TotalHours;
+            // Use double for precision; negative means departure already passed
+            double hoursToDepartureDouble = (departure - DateTime.UtcNow).TotalHours;
+            int hoursToDeparture = (int)Math.Floor(hoursToDepartureDouble);
+
+            // Past departure — no refund
+            if (hoursToDeparture < 0)
+                return (0, 0, amountPaid);
 
             // Get applicable cancellation policy
+            // Policy with the highest HoursBeforeDeparture that is <= current hours remaining
             var policies = await _policyRepository.GetAllActiveAsync();
             var applicablePolicy = policies
                 .Where(p => p.HoursBeforeDeparture <= hoursToDeparture)
@@ -518,15 +528,15 @@ namespace BusTicketingSystem.Services
 
             if (applicablePolicy == null)
             {
-                // Default: 100% refund if > 48 hrs, 75% for 24-48, 50% for 0-24, 0% after departure
+                // Default policy when no custom policy is configured
                 if (hoursToDeparture > 48) return (amountPaid, 100, 0);
                 if (hoursToDeparture > 24) return (Math.Round(amountPaid * 0.75m, 2), 75, Math.Round(amountPaid * 0.25m, 2));
-                if (hoursToDeparture > 0)  return (Math.Round(amountPaid * 0.5m, 2),  50, Math.Round(amountPaid * 0.5m, 2));
+                if (hoursToDeparture > 0)  return (Math.Round(amountPaid * 0.50m, 2), 50, Math.Round(amountPaid * 0.50m, 2));
                 return (0, 0, amountPaid);
             }
 
             var refundAmount    = Math.Round((amountPaid * applicablePolicy.RefundPercentage) / 100, 2);
-            var cancellationFee = amountPaid - refundAmount;
+            var cancellationFee = Math.Round(amountPaid - refundAmount, 2);
 
             return (refundAmount, applicablePolicy.RefundPercentage, cancellationFee);
         }
