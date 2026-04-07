@@ -406,46 +406,38 @@ namespace BusTicketingSystem.Services
                         .ToList();
 
                     // FIX — capture count BEFORE modifying statuses
-                    if (affectedSeats.Count > 0)
+                    var bookedCount = affectedSeats.Count(s => s.SeatStatus == "Booked");
+
+                    if (!wasConfirmed || role == "Admin")
                     {
-                        // Capture BEFORE the loop overwrites SeatStatus
-                        var bookedCount = affectedSeats.Count(s => s.SeatStatus == "Booked");
-
-                        var now = DateTime.UtcNow;
-                        foreach (var seat in affectedSeats)
+                        // Release seats immediately for unpaid cancellation or admin direct cancellation
+                        if (affectedSeats.Count > 0)
                         {
-                            seat.SeatStatus = "Available";
-                            seat.LockedByUserId = null;
-                            seat.LockedAt = null;
-                            seat.BookingId = null;
-                            seat.UpdatedAt = now;
-                        }
-                        await _seatRepository.UpdateManyAsync(affectedSeats);
+                            var now = DateTime.UtcNow;
+                            foreach (var seat in affectedSeats)
+                            {
+                                seat.SeatStatus = "Available";
+                                seat.LockedByUserId = null;
+                                seat.LockedAt = null;
+                                seat.BookingId = null;
+                                seat.UpdatedAt = now;
+                            }
+                            await _seatRepository.UpdateManyAsync(affectedSeats);
 
-                        // Restore AvailableSeats for confirmed (Booked) seats
-                        if (bookedCount > 0)
-                        {
-                            schedule.AvailableSeats += bookedCount;
+                            if (bookedCount > 0)
+                            {
+                                schedule.AvailableSeats += bookedCount;
+                            }
                         }
                     }
-                    // For confirmed bookings, set status to CancellationRequested and keep seats locked
-                    // For non-confirmed bookings, immediately cancel
-                    if (wasConfirmed)
+
+                    if (wasConfirmed && role != "Admin")
                     {
                         booking.BookingStatus = BookingStatus.CancellationRequested;
                     }
                     else
                     {
                         booking.BookingStatus = BookingStatus.Cancelled;
-                        // Release seats for unpaid bookings
-                        if (affectedSeats.Count > 0)
-                        {
-                            var bookedCount = affectedSeats.Count(s => s.SeatStatus == "Booked");
-                            if (bookedCount > 0)
-                            {
-                                schedule.AvailableSeats += bookedCount;
-                            }
-                        }
                     }
                     booking.LastStatusChangeAt = DateTime.UtcNow;
                     booking.CancelledBy = role;

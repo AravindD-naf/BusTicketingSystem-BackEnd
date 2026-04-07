@@ -421,23 +421,21 @@ namespace BusTicketingSystem.Services
                     $"Cannot confirm refund with status: {refund.Status}",
                     RefundOperationException.RefundErrorType.ProcessingError);
 
-            // Credit wallet if approved â€” refund goes directly to user's wallet
+            // Credit wallet if approved — refund goes directly to user's wallet
             refund.ProcessedAt = DateTime.UtcNow;
             refund.Status = dto.IsApproved ? RefundStatus.Completed : RefundStatus.Rejected;
             refund.Reason = dto.Reason;
 
-            // Update booking status and release seats if approved
-            if (dto.IsApproved)
+            var booking = await _bookingRepository.GetByIdAsync(refund.BookingId);
+            if (booking != null)
             {
-                var booking = await _bookingRepository.GetByIdAsync(refund.BookingId);
-                if (booking != null && booking.BookingStatus == BookingStatus.CancellationRequested)
+                if (dto.IsApproved && booking.BookingStatus == BookingStatus.CancellationRequested)
                 {
-                    // Set booking to cancelled and release seats
+                    // Approve cancellation and release seats
                     booking.BookingStatus = BookingStatus.Cancelled;
                     booking.LastStatusChangeAt = DateTime.UtcNow;
                     await _bookingRepository.UpdateAsync(booking);
 
-                    // Release seats
                     var seats = await _seatRepository.GetSeatsByScheduleIdAsync(booking.ScheduleId);
                     var affectedSeats = seats
                         .Where(s => s.BookingId == refund.BookingId && s.SeatStatus == "Booked")
@@ -456,7 +454,6 @@ namespace BusTicketingSystem.Services
                         }
                         await _seatRepository.UpdateManyAsync(affectedSeats);
 
-                        // Update schedule available seats
                         var schedule = await _scheduleRepository.GetByIdAsync(booking.ScheduleId);
                         if (schedule != null)
                         {
@@ -465,13 +462,19 @@ namespace BusTicketingSystem.Services
                         }
                     }
                 }
+                else if (!dto.IsApproved && booking.BookingStatus == BookingStatus.CancellationRequested)
+                {
+                    // Rejection means the booking remains confirmed
+                    booking.BookingStatus = BookingStatus.Confirmed;
+                    booking.LastStatusChangeAt = DateTime.UtcNow;
+                    await _bookingRepository.UpdateAsync(booking);
+                }
             }
 
             await _refundRepository.SaveChangesAsync();
 
             if (dto.IsApproved && refund.RefundAmount > 0)
             {
-                var booking = await _bookingRepository.GetByIdAsync(refund.BookingId);
                 if (booking != null)
                 {
                     try
@@ -483,7 +486,7 @@ namespace BusTicketingSystem.Services
                             refund.BookingId.ToString(),
                             ipAddress);
                     }
-                    catch { /* swallow â€” refund record is already saved */ }
+                    catch { /* swallow — refund record is already saved */ }
                 }
             }
 
@@ -496,20 +499,42 @@ namespace BusTicketingSystem.Services
                 userId,
                 ipAddress);
 
-            // Send refund status email to the user
+            // Send email notification after admin decision
             try
             {
-                var booking = await _bookingRepository.GetByIdAsync(refund.BookingId);
-                var user    = booking != null ? await _userRepository.GetByIdAsync(booking.UserId) : null;
+                var user = booking != null ? await _userRepository.GetByIdAsync(booking.UserId) : null;
                 if (user != null && booking != null)
                 {
-                    await _emailService.SendRefundStatusEmailAsync(
-                        toEmail:      user.Email,
-                        userName:     user.FullName,
-                        pnr:          booking.PNR,
-                        isApproved:   dto.IsApproved,
-                        refundAmount: refund.RefundAmount,
-                        reason:       dto.Reason ?? string.Empty);
+                    var schedule = await _scheduleRepository.GetByIdAsync(booking.ScheduleId);
+                    var source = schedule?.Route?.Source ?? string.Empty;
+                    var destination = schedule?.Route?.Destination ?? string.Empty;
+                    var travelDate = schedule?.TravelDate ?? DateTime.UtcNow;
+
+                    if (dto.IsApproved)
+                    {
+                        await _emailService.SendCancellationEmailAsync(
+                            toEmail: user.Email,
+                            userName: user.FullName,
+                            pnr: booking.PNR,
+                            source: source,
+                            destination: destination,
+                            travelDate: travelDate,
+                            amountPaid: refund.RefundAmount + refund.CancellationFee,
+                            refundAmount: refund.RefundAmount,
+                            refundPercentage: refund.RefundPercentage,
+                            cancellationFee: refund.CancellationFee,
+                            cancellationReason: booking.CancellationReason ?? string.Empty);
+                    }
+                    else
+                    {
+                        await _emailService.SendRefundStatusEmailAsync(
+                            toEmail: user.Email,
+                            userName: user.FullName,
+                            pnr: booking.PNR,
+                            isApproved: false,
+                            refundAmount: refund.RefundAmount,
+                            reason: dto.Reason ?? string.Empty);
+                    }
                 }
             }
             catch { /* swallow — email failure should not affect refund result */ }
