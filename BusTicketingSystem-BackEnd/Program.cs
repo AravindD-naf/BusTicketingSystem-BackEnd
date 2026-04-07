@@ -79,6 +79,15 @@ var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var jwtKey = jwtSettings["Key"]
     ?? throw new InvalidOperationException("JWT Key missing in configuration.");
 
+if (string.IsNullOrWhiteSpace(jwtKey))
+    throw new InvalidOperationException("JWT Key cannot be empty. Configure a valid JWT Key in appsettings.json under JwtSettings:Key");
+
+var jwtIssuer = jwtSettings["Issuer"]
+    ?? throw new InvalidOperationException("JWT Issuer missing in configuration.");
+
+var jwtAudience = jwtSettings["Audience"]
+    ?? throw new InvalidOperationException("JWT Audience missing in configuration.");
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -88,8 +97,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience         = true,
             ValidateLifetime         = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer              = jwtSettings["Issuer"],
-            ValidAudience            = jwtSettings["Audience"],
+            ValidIssuer              = jwtIssuer,
+            ValidAudience            = jwtAudience,
             IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
         // Allow SignalR to read JWT from query string
