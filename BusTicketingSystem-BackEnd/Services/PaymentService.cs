@@ -464,10 +464,38 @@ namespace BusTicketingSystem.Services
                 }
                 else if (!dto.IsApproved && booking.BookingStatus == BookingStatus.CancellationRequested)
                 {
-                    // Rejection means the booking remains confirmed
-                    booking.BookingStatus = BookingStatus.Confirmed;
+                    // Rejection: cancellation still goes through — booking is Cancelled,
+                    // but no refund is credited to the user's wallet.
+                    booking.BookingStatus = BookingStatus.Cancelled;
                     booking.LastStatusChangeAt = DateTime.UtcNow;
                     await _bookingRepository.UpdateAsync(booking);
+
+                    // Release the seats since the booking is now fully cancelled
+                    var seats = await _seatRepository.GetSeatsByScheduleIdAsync(booking.ScheduleId);
+                    var affectedSeats = seats
+                        .Where(s => s.BookingId == refund.BookingId && s.SeatStatus == "Booked")
+                        .ToList();
+
+                    if (affectedSeats.Count > 0)
+                    {
+                        var now = DateTime.UtcNow;
+                        foreach (var seat in affectedSeats)
+                        {
+                            seat.SeatStatus = "Available";
+                            seat.LockedByUserId = null;
+                            seat.LockedAt = null;
+                            seat.BookingId = null;
+                            seat.UpdatedAt = now;
+                        }
+                        await _seatRepository.UpdateManyAsync(affectedSeats);
+
+                        var schedule = await _scheduleRepository.GetByIdAsync(booking.ScheduleId);
+                        if (schedule != null)
+                        {
+                            schedule.AvailableSeats += affectedSeats.Count;
+                            await _scheduleRepository.UpdateAsync(schedule);
+                        }
+                    }
                 }
             }
 
