@@ -540,12 +540,12 @@ namespace BusTicketingSystem.Services
                 CancelledBy = b.CancelledBy ?? string.Empty,
                 Refund = b.Refund == null ? null : new BookingRefundDto
                 {
-                    RefundId = b.Refund.RefundId,
-                    RefundAmount = b.Refund.RefundAmount,
-                    CancellationFee = b.Refund.CancellationFee,
+                    RefundId         = b.Refund.RefundId,
+                    RefundAmount     = b.Refund.RefundAmount,
+                    CancellationFee  = b.Refund.CancellationFee,
                     RefundPercentage = b.Refund.RefundPercentage,
-                    Status = b.Refund.Status.ToString(),
-                    ProcessedAt = b.Refund.ProcessedAt
+                    Status           = b.Refund.Status.ToString(),
+                    ProcessedAt      = b.Refund.ProcessedAt
                 },
                 Source = b.Schedule?.Route?.Source ?? string.Empty,
                 Destination = b.Schedule?.Route?.Destination ?? string.Empty,

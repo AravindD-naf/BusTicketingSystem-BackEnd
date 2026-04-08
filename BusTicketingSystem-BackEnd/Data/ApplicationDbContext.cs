@@ -49,8 +49,8 @@ namespace BusTicketingSystem.Data
             // Refund
             modelBuilder.Entity<Refund>()
                 .HasOne(r => r.Booking)
-                .WithMany()
-                .HasForeignKey(r => r.BookingId)
+                .WithOne(b => b.Refund)
+                .HasForeignKey<Refund>(r => r.BookingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Refund>()
