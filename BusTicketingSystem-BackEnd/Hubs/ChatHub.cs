@@ -18,14 +18,14 @@ namespace BusTicketingSystem.Hubs
 
         public ChatHub(ApplicationDbContext db) => _db = db;
 
-        public override async Task OnConnectedAsync()
+        public override async Task OnConnectedAsync() // when the user opens their chat their userid is stored in dictionary
         {
             var userId = GetUserId();
             if (userId > 0) _connections[userId] = Context.ConnectionId;
             await base.OnConnectedAsync();
         }
 
-        public override async Task OnDisconnectedAsync(Exception? exception)
+        public override async Task OnDisconnectedAsync(Exception? exception)  // when the user closes the tab or browser their entry is removed.
         {
             var userId = GetUserId();
             if (userId > 0) _connections.TryRemove(userId, out _);
