@@ -171,7 +171,7 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1"
     });
 
-    // Define the JWT Bearer security scheme
+    // JWT Bearer security definition — adds the Authorize button in Swagger UI
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Name         = "Authorization",
@@ -179,10 +179,10 @@ builder.Services.AddSwaggerGen(options =>
         Scheme       = "Bearer",
         BearerFormat = "JWT",
         In           = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description  = "Enter your JWT token below.\nExample: eyJhbGciOiJIUzI1NiIs..."
+        Description  = "Enter your JWT token here. Example: eyJhbGciOiJIUzI1NiIs..."
     });
 
-    // Apply the scheme globally — all endpoints will show the lock icon
+    // Apply JWT globally to all endpoints
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
     {
         {
