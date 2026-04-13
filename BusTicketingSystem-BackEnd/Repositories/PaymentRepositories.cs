@@ -82,6 +82,11 @@ namespace BusTicketingSystem.Repositories
                 .OrderBy(p => p.SeatNumber)
                 .ToListAsync();
 
+        public async Task<List<Passenger>> GetByBookingIdsAsync(List<int> bookingIds) =>
+            await _context.Passengers
+                .Where(p => bookingIds.Contains(p.BookingId) && !p.IsDeleted)
+                .ToListAsync();
+
         public async Task UpdateAsync(Passenger passenger) => _context.Passengers.Update(passenger);
 
         public async Task DeleteAsync(int passengerId)
@@ -120,3 +125,29 @@ namespace BusTicketingSystem.Repositories
         public new async Task SaveChangesAsync() => await _context.SaveChangesAsync();
     }
 }
+
+    public class BusRatingRepository : Repository<BusRating>, IBusRatingRepository
+    {
+        public BusRatingRepository(ApplicationDbContext context) : base(context) { }
+
+        public async Task<BusRating?> GetByBookingIdAsync(int bookingId) =>
+            await _context.BusRatings
+                .FirstOrDefaultAsync(r => r.BookingId == bookingId);
+
+        public async Task<double> GetAverageRatingForBusAsync(int busId) =>
+            await _context.BusRatings
+                .Where(r => r.BusId == busId)
+                .AverageAsync(r => (double)r.Rating);
+
+        public async Task UpdateBusRatingAverageAsync(int busId, double average)
+        {
+            var bus = await _context.Buses.FirstOrDefaultAsync(b => b.BusId == busId);
+            if (bus == null) return;
+            bus.RatingAverage = Math.Round(average, 1);
+            bus.UpdatedAt = DateTime.UtcNow;
+            _context.Buses.Update(bus);
+            await _context.SaveChangesAsync();
+        }
+
+        public new async Task SaveChangesAsync() => await _context.SaveChangesAsync();
+    }

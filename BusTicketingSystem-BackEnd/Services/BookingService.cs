@@ -5,8 +5,6 @@ using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Interfaces.Services;
 using BusTicketingSystem.Models;
 using BusTicketingSystem.Models.Enums;
-using BusTicketingSystem.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Services
 {
@@ -19,7 +17,8 @@ namespace BusTicketingSystem.Services
         private readonly IPaymentService _paymentService;
         private readonly IEmailService _emailService;
         private readonly IUserRepository _userRepository;
-        private readonly ApplicationDbContext _context;
+        private readonly IPassengerRepository _passengerRepository;
+        private readonly IBusRatingRepository _busRatingRepository;
         private readonly ILogger<BookingService> _logger;
 
         public BookingService(
@@ -31,7 +30,8 @@ namespace BusTicketingSystem.Services
             IPaymentService paymentService,
             IEmailService emailService,
             IUserRepository userRepository,
-            ApplicationDbContext context,
+            IPassengerRepository passengerRepository,
+            IBusRatingRepository busRatingRepository,
             ILogger<BookingService> logger)
         {
             _bookingRepository = bookingRepository;
@@ -41,7 +41,8 @@ namespace BusTicketingSystem.Services
             _paymentService = paymentService;
             _emailService = emailService;
             _userRepository = userRepository;
-            _context = context;
+            _passengerRepository = passengerRepository;
+            _busRatingRepository = busRatingRepository;
             _logger = logger;
         }
 
@@ -162,7 +163,7 @@ namespace BusTicketingSystem.Services
                     }
                     if (passengers.Count > 0)
                     {
-                        await _context.Passengers.AddRangeAsync(passengers);
+                        await _passengerRepository.AddManyAsync(passengers);
                     }
                 }
 
@@ -245,9 +246,7 @@ namespace BusTicketingSystem.Services
 
             // Load all passengers for these bookings in one query to ensure Gender is fresh
             var bookingIds = bookings.Select(b => b.BookingId).ToList();
-            var allPassengers = await _context.Passengers
-                .Where(p => bookingIds.Contains(p.BookingId) && !p.IsDeleted)
-                .ToListAsync();
+            var allPassengers = await _passengerRepository.GetByBookingIdsAsync(bookingIds);
 
             var dtos = bookings.Select(b =>
             {
@@ -300,9 +299,7 @@ namespace BusTicketingSystem.Services
                 .ToList();
 
             // Query passengers directly to ensure Gender and all fields are loaded fresh
-            var passengers = await _context.Passengers
-                .Where(p => p.BookingId == booking.BookingId && !p.IsDeleted)
-                .ToListAsync();
+            var passengers = await _passengerRepository.GetByBookingIdAsync(booking.BookingId);
 
             var bookingDetail = new BookingDetailResponseDto
             {
@@ -595,8 +592,7 @@ namespace BusTicketingSystem.Services
                     BookingOperationException.BookingErrorType.InvalidBookingStatus);
 
             // Prevent duplicate ratings
-            var existing = await _context.BusRatings
-                .FirstOrDefaultAsync(r => r.BookingId == bookingId);
+            var existing = await _busRatingRepository.GetByBookingIdAsync(bookingId);
             if (existing != null)
                 throw new BookingOperationException(
                     "You have already rated this booking.",
@@ -606,7 +602,6 @@ namespace BusTicketingSystem.Services
             if (schedule?.Bus == null)
                 throw new ResourceNotFoundException("Bus", "for this booking");
 
-            // Save the rating
             var busRating = new BusRating
             {
                 BookingId = bookingId,
@@ -615,17 +610,12 @@ namespace BusTicketingSystem.Services
                 Rating = rating,
                 CreatedAt = DateTime.UtcNow
             };
-            await _context.BusRatings.AddAsync(busRating);
-            await _context.SaveChangesAsync();
+            await _busRatingRepository.AddAsync(busRating);
+            await _busRatingRepository.SaveChangesAsync();
 
             // Recalculate average from all ratings for this bus
-            var avg = await _context.BusRatings
-                .Where(r => r.BusId == schedule.Bus.BusId)
-                .AverageAsync(r => (double)r.Rating);
-
-            schedule.Bus.RatingAverage = Math.Round(avg, 1);
-            schedule.Bus.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            var avg = await _busRatingRepository.GetAverageRatingForBusAsync(schedule.Bus.BusId);
+            await _busRatingRepository.UpdateBusRatingAverageAsync(schedule.Bus.BusId, avg);
 
             return ApiResponse<bool>.SuccessResponse(true);
         }

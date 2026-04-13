@@ -22,6 +22,7 @@ namespace BusTicketingSystem.Interfaces.Repositories
         Task AddManyAsync(IEnumerable<Passenger> passengers);
 
         Task<List<Passenger>> GetByBookingIdAsync(int bookingId);
+        Task<List<Passenger>> GetByBookingIdsAsync(List<int> bookingIds);
         Task UpdateAsync(Passenger passenger);
         Task DeleteAsync(int passengerId);
     }
@@ -31,5 +32,12 @@ namespace BusTicketingSystem.Interfaces.Repositories
         Task<List<CancellationPolicy>> GetAllActiveAsync();
         Task<CancellationPolicy?> GetByHoursAsync(int hours);
         Task UpdateAsync(CancellationPolicy policy);
+    }
+
+    public interface IBusRatingRepository : IRepository<BusRating>
+    {
+        Task<BusRating?> GetByBookingIdAsync(int bookingId);
+        Task<double> GetAverageRatingForBusAsync(int busId);
+        Task UpdateBusRatingAverageAsync(int busId, double average);
     }
 }
