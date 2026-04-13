@@ -1,7 +1,8 @@
-using BusTicketingSystem.Data;
 using BusTicketingSystem.Exceptions;
+using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Interfaces.Services;
 using BusTicketingSystem.Models;
+using BusTicketingSystem.Repositories;
 using BusTicketingSystem.Services;
 using BusTicketingSystem.Tests.Fixtures;
 using FluentAssertions;
@@ -13,7 +14,7 @@ public class WalletServiceTests
 {
     private readonly Mock<IAuditService> _auditMock = new();
 
-    private WalletService CreateSut(ApplicationDbContext ctx)
+    private WalletService CreateSut(BusTicketingSystem.Data.ApplicationDbContext ctx)
     {
         _auditMock
             .Setup(a => a.LogAsync(
@@ -21,7 +22,7 @@ public class WalletServiceTests
                 It.IsAny<string>(), It.IsAny<object?>(), It.IsAny<object?>(), It.IsAny<string?>()))
             .Returns(Task.CompletedTask);
 
-        return new WalletService(ctx, _auditMock.Object);
+        return new WalletService(new WalletRepository(ctx), _auditMock.Object);
     }
 
     // ── GetOrCreateWalletAsync ────────────────────────────────────────────────

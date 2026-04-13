@@ -5,11 +5,11 @@ using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Interfaces.Services;
 using BusTicketingSystem.Models;
 using BusTicketingSystem.Models.Enums;
+using BusTicketingSystem.Repositories;
 using BusTicketingSystem.Services;
 using BusTicketingSystem.Tests.Fixtures;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using Microsoft.EntityFrameworkCore;
 using Moq;
 
 namespace BusTicketingSystem.Tests.Services;
@@ -23,9 +23,9 @@ public class BookingServiceTests
     private readonly Mock<IAuditRepository>    _auditRepoMock    = new();
     private readonly Mock<IPaymentService>     _paymentMock      = new();
     private readonly Mock<ISeatService>        _seatServiceMock  = new();
-    private readonly Mock<IEmailService>      _emailMock        = new();
-    private readonly Mock<IUserRepository>    _userRepoMock     = new();
-    private readonly Mock<ILogger<BookingService>> _loggerMock = new();
+    private readonly Mock<IEmailService>       _emailMock        = new();
+    private readonly Mock<IUserRepository>     _userRepoMock     = new();
+    private readonly Mock<ILogger<BookingService>> _loggerMock   = new();
 
     private BookingService CreateSut(ApplicationDbContext ctx) =>
         new BookingService(
@@ -37,7 +37,8 @@ public class BookingServiceTests
             _paymentMock.Object,
             _emailMock.Object,
             _userRepoMock.Object,
-            ctx,
+            new PassengerRepository(ctx),
+            new BusRatingRepository(ctx),
             _loggerMock.Object);
 
     public BookingServiceTests()

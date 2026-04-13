@@ -2,6 +2,7 @@ using BusTicketingSystem.Data;
 using BusTicketingSystem.DTOs.Requests;
 using BusTicketingSystem.Exceptions;
 using BusTicketingSystem.Models;
+using BusTicketingSystem.Repositories;
 using BusTicketingSystem.Services;
 using BusTicketingSystem.Tests.Fixtures;
 using FluentAssertions;
@@ -9,12 +10,15 @@ using FluentAssertions;
 namespace BusTicketingSystem.Tests.Services;
 
 /// <summary>
-/// PromoCodeService uses ApplicationDbContext directly, so we exercise it
-/// with the EF InMemory provider rather than mocking.
+/// PromoCodeService now uses IPromoCodeRepository, exercised here
+/// with the EF InMemory provider via PromoCodeRepository.
 /// </summary>
 public class PromoCodeServiceTests
 {
     private ApplicationDbContext CreateContext() => DbContextFactory.CreateInMemory();
+
+    private static PromoCodeService CreateSut(ApplicationDbContext ctx) =>
+        new PromoCodeService(new PromoCodeRepository(ctx));
 
     private static void SeedPromos(ApplicationDbContext ctx)
     {
@@ -33,7 +37,7 @@ public class PromoCodeServiceTests
         // Arrange
         await using var ctx = CreateContext();
         SeedPromos(ctx);
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act
         var result = await sut.ValidateAsync("TEST20", bookingAmount: 1000m);
@@ -52,7 +56,7 @@ public class PromoCodeServiceTests
         // Arrange
         await using var ctx = CreateContext();
         SeedPromos(ctx);
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act
         var result = await sut.ValidateAsync("FLAT150", bookingAmount: 800m);
@@ -69,7 +73,7 @@ public class PromoCodeServiceTests
         // Arrange
         await using var ctx = CreateContext();
         SeedPromos(ctx);
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act — use lowercase version of code
         var result = await sut.ValidateAsync("test20", bookingAmount: 1000m);
@@ -84,7 +88,7 @@ public class PromoCodeServiceTests
         // Arrange
         await using var ctx = CreateContext();
         SeedPromos(ctx);
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act
         var result = await sut.ValidateAsync("GHOST", bookingAmount: 1000m);
@@ -100,7 +104,7 @@ public class PromoCodeServiceTests
         // Arrange
         await using var ctx = CreateContext();
         SeedPromos(ctx);
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act
         var result = await sut.ValidateAsync("EXPIRED", bookingAmount: 500m);
@@ -116,7 +120,7 @@ public class PromoCodeServiceTests
         // Arrange
         await using var ctx = CreateContext();
         SeedPromos(ctx);
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act — TEST20 requires min ₹300; we send ₹100
         var result = await sut.ValidateAsync("TEST20", bookingAmount: 100m);
@@ -136,7 +140,7 @@ public class PromoCodeServiceTests
         promo.UsedCount     = 5;   // limit reached
         ctx.PromoCodes.Add(promo);
         ctx.SaveChanges();
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act
         var result = await sut.ValidateAsync("TEST20", bookingAmount: 1000m);
@@ -161,7 +165,7 @@ public class PromoCodeServiceTests
         };
         ctx.PromoCodes.Add(promo);
         ctx.SaveChanges();
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act — booking is only ₹300 but discount is ₹1000 flat
         var result = await sut.ValidateAsync("BIG", bookingAmount: 300m);
@@ -180,7 +184,7 @@ public class PromoCodeServiceTests
         // Arrange
         await using var ctx = CreateContext();
         SeedPromos(ctx);
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
         var initialCount = ctx.PromoCodes.First(p => p.Code == "TEST20").UsedCount;
 
         // Act
@@ -198,7 +202,7 @@ public class PromoCodeServiceTests
     {
         // Arrange
         await using var ctx = CreateContext();
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         var request = new CreatePromoCodeRequest
         {
@@ -227,7 +231,7 @@ public class PromoCodeServiceTests
         // Arrange
         await using var ctx = CreateContext();
         SeedPromos(ctx);
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         var request = new CreatePromoCodeRequest
         {
@@ -250,7 +254,7 @@ public class PromoCodeServiceTests
         // Arrange
         await using var ctx = CreateContext();
         SeedPromos(ctx);
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         var request = new UpdatePromoCodeRequest
         {
@@ -275,7 +279,7 @@ public class PromoCodeServiceTests
     {
         // Arrange
         await using var ctx = CreateContext();
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         var request = new UpdatePromoCodeRequest
         {
@@ -296,7 +300,7 @@ public class PromoCodeServiceTests
         // Arrange
         await using var ctx = CreateContext();
         SeedPromos(ctx);
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act
         await sut.DeleteAsync(1);
@@ -310,7 +314,7 @@ public class PromoCodeServiceTests
     {
         // Arrange
         await using var ctx = CreateContext();
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act & Assert
         Func<Task> act = () => sut.DeleteAsync(999);
@@ -325,7 +329,7 @@ public class PromoCodeServiceTests
         // Arrange
         await using var ctx = CreateContext();
         SeedPromos(ctx);
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act
         var result = await sut.ToggleActiveAsync(1);   // TEST20 was active
@@ -344,7 +348,7 @@ public class PromoCodeServiceTests
         promo.IsActive = false;
         ctx.PromoCodes.Add(promo);
         ctx.SaveChanges();
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act
         var result = await sut.ToggleActiveAsync(50);
@@ -361,7 +365,7 @@ public class PromoCodeServiceTests
         // Arrange
         await using var ctx = CreateContext();
         SeedPromos(ctx);
-        var sut = new PromoCodeService(ctx);
+        var sut = CreateSut(ctx);
 
         // Act
         var result = await sut.GetActiveAsync();
