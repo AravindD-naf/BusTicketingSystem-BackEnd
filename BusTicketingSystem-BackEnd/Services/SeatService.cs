@@ -15,7 +15,7 @@ namespace BusTicketingSystem.Services
         private readonly IScheduleRepository _scheduleRepository;
         private readonly IAuditRepository _auditRepository;
         private readonly IBookingRepository _bookingRepository;
-        private const int LOCK_EXPIRY_MINUTES = 4;
+        private const int LOCK_EXPIRY_MINUTES = 5;
 
         public SeatService(
             ISeatRepository seatRepository,
@@ -72,8 +72,6 @@ namespace BusTicketingSystem.Services
 
         private async Task CleanupExpiredPendingBookingsAsync()
         {
-            var cutoff = DateTime.UtcNow.AddMinutes(5);
-
             var expiredBookings = await _bookingRepository
                 .GetExpiredPendingBookingsAsync();
 
@@ -145,86 +143,80 @@ namespace BusTicketingSystem.Services
             await _seatLockRepository.CleanupExpiredLocksAsync();
             await _seatRepository.CleanupExpiredLocksAsync();
 
-            try
+            var seats = await _seatRepository.GetSeatsByNumbersAsync(scheduleId, seatNumbers);
+
+            foreach (var seatNumber in seatNumbers)
             {
-                var seats = await _seatRepository.GetSeatsByNumbersAsync(scheduleId, seatNumbers);
+                var seat = seats.FirstOrDefault(s => s.SeatNumber == seatNumber);
 
-                foreach (var seatNumber in seatNumbers)
+                if (seat == null)
                 {
-                    var seat = seats.FirstOrDefault(s => s.SeatNumber == seatNumber);
+                    response.FailedSeatNumbers.Add($"{seatNumber} (not found)");
+                    continue;
+                }
 
-                    if (seat == null)
-                    {
-                        response.FailedSeatNumbers.Add($"{seatNumber} (not found)");
-                        continue;
-                    }
+                if (seat.SeatStatus == "Booked")
+                {
+                    response.FailedSeatNumbers.Add($"{seatNumber} (already booked)");
+                    continue;
+                }
 
-                    if (seat.SeatStatus == "Booked")
-                    {
-                        response.FailedSeatNumbers.Add($"{seatNumber} (already booked)");
-                        continue;
-                    }
+                if (seat.SeatStatus == "Locked" && seat.LockedByUserId != userId)
+                {
+                    response.FailedSeatNumbers.Add($"{seatNumber} (locked by another user)");
+                    continue;
+                }
 
-                    if (seat.SeatStatus == "Locked" && seat.LockedByUserId != userId)
-                    {
-                        response.FailedSeatNumbers.Add($"{seatNumber} (locked by another user)");
-                        continue;
-                    }
-
-                    if (seat.SeatStatus == "Locked" && seat.LockedByUserId == userId)
-                    {
-                        seat.LockedAt = now;
-                        seat.UpdatedAt = now;
-                        response.LockedSeatNumbers.Add(seatNumber);
-                        continue;
-                    }
-
-                    seat.SeatStatus = "Locked";
-                    seat.LockedByUserId = userId;
+                if (seat.SeatStatus == "Locked" && seat.LockedByUserId == userId)
+                {
+                    // Refresh the lock timestamp
                     seat.LockedAt = now;
                     seat.UpdatedAt = now;
-
-                    var seatLock = new SeatLock
-                    {
-                        SeatId = seat.SeatId,
-                        UserId = userId,
-                        LockedAt = now,
-                        ExpiresAt = expiresAt
-                    };
-
-                    await _seatLockRepository.AddAsync(seatLock);
                     response.LockedSeatNumbers.Add(seatNumber);
+                    continue;
                 }
 
-                var seatsToUpdate = seats.Where(s => response.LockedSeatNumbers.Contains(s.SeatNumber)).ToList();
-                if (seatsToUpdate.Count > 0)
+                seat.SeatStatus = "Locked";
+                seat.LockedByUserId = userId;
+                seat.LockedAt = now;
+                seat.UpdatedAt = now;
+
+                var seatLock = new SeatLock
                 {
-                    await _seatRepository.UpdateManyAsync(seatsToUpdate);
-                }
+                    SeatId = seat.SeatId,
+                    UserId = userId,
+                    LockedAt = now,
+                    ExpiresAt = expiresAt
+                };
 
-                await _seatRepository.SaveChangesAsync();
-
-                response.Success = response.FailedSeatNumbers.Count == 0;
-                response.LockExpiresAt = expiresAt;
-                response.Message = response.Success
-                    ? $"All {response.LockedSeatNumbers.Count} seats locked successfully."
-                    : $"Locked {response.LockedSeatNumbers.Count} seats. Failed: {response.FailedSeatNumbers.Count}";
-
-                await _auditRepository.LogAuditAsync(
-                    "LOCK_SEATS",
-                    "Seat",
-                    string.Join(",", response.LockedSeatNumbers),
-                    null,
-                    new { scheduleId, seatNumbers = response.LockedSeatNumbers },
-                    userId,
-                    ipAddress);
-
-                return ApiResponse<LockSeatsResponseDto>.SuccessResponse(response);
+                await _seatLockRepository.AddAsync(seatLock);
+                response.LockedSeatNumbers.Add(seatNumber);
             }
-            catch (Exception ex)
+
+            var seatsToUpdate = seats.Where(s => response.LockedSeatNumbers.Contains(s.SeatNumber)).ToList();
+            if (seatsToUpdate.Count > 0)
             {
-                throw;
+                await _seatRepository.UpdateManyAsync(seatsToUpdate);
             }
+
+            await _seatRepository.SaveChangesAsync();
+
+            response.Success = response.FailedSeatNumbers.Count == 0;
+            response.LockExpiresAt = expiresAt;
+            response.Message = response.Success
+                ? $"All {response.LockedSeatNumbers.Count} seats locked successfully."
+                : $"Locked {response.LockedSeatNumbers.Count} seats. Failed: {response.FailedSeatNumbers.Count}";
+
+            await _auditRepository.LogAuditAsync(
+                "LOCK_SEATS",
+                "Seat",
+                string.Join(",", response.LockedSeatNumbers),
+                null,
+                new { scheduleId, seatNumbers = response.LockedSeatNumbers },
+                userId,
+                ipAddress);
+
+            return ApiResponse<LockSeatsResponseDto>.SuccessResponse(response);
         }
 
         public async Task<ApiResponse<ReleaseSeatsResponseDto>> ReleaseSeatsAsync(
@@ -242,67 +234,60 @@ namespace BusTicketingSystem.Services
                 FailedSeatNumbers = new List<string>()
             };
 
-            try
+            var seats = await _seatRepository.GetSeatsByNumbersAsync(scheduleId, seatNumbers);
+
+            foreach (var seatNumber in seatNumbers)
             {
-                var seats = await _seatRepository.GetSeatsByNumbersAsync(scheduleId, seatNumbers);
+                var seat = seats.FirstOrDefault(s => s.SeatNumber == seatNumber);
 
-                foreach (var seatNumber in seatNumbers)
+                if (seat == null)
                 {
-                    var seat = seats.FirstOrDefault(s => s.SeatNumber == seatNumber);
-
-                    if (seat == null)
-                    {
-                        response.FailedSeatNumbers.Add($"{seatNumber} (not found)");
-                        continue;
-                    }
-
-                    if (seat.SeatStatus != "Locked")
-                    {
-                        response.FailedSeatNumbers.Add($"{seatNumber} (not locked)");
-                        continue;
-                    }
-
-                    if (seat.LockedByUserId != userId)
-                    {
-                        response.FailedSeatNumbers.Add($"{seatNumber} (locked by another user)");
-                        continue;
-                    }
-
-                    seat.SeatStatus = "Available";
-                    seat.LockedByUserId = null;
-                    seat.LockedAt = null;
-                    seat.UpdatedAt = DateTime.UtcNow;
-
-                    response.ReleasedSeatNumbers.Add(seatNumber);
+                    response.FailedSeatNumbers.Add($"{seatNumber} (not found)");
+                    continue;
                 }
 
-                var seatsToUpdate = seats.Where(s => response.ReleasedSeatNumbers.Contains(s.SeatNumber)).ToList();
-                if (seatsToUpdate.Count > 0)
+                if (seat.SeatStatus != "Locked")
                 {
-                    await _seatRepository.UpdateManyAsync(seatsToUpdate);
-                    await _seatRepository.SaveChangesAsync();
+                    response.FailedSeatNumbers.Add($"{seatNumber} (not locked)");
+                    continue;
                 }
 
-                response.Success = response.FailedSeatNumbers.Count == 0;
-                response.Message = response.Success
-                    ? $"All {response.ReleasedSeatNumbers.Count} seats released successfully."
-                    : $"Released {response.ReleasedSeatNumbers.Count} seats. Failed: {response.FailedSeatNumbers.Count}";
+                if (seat.LockedByUserId != userId)
+                {
+                    response.FailedSeatNumbers.Add($"{seatNumber} (locked by another user)");
+                    continue;
+                }
 
-                await _auditRepository.LogAuditAsync(
-                    "RELEASE_SEATS",
-                    "Seat",
-                    string.Join(",", response.ReleasedSeatNumbers),
-                    null,
-                    new { scheduleId, seatNumbers = response.ReleasedSeatNumbers },
-                    userId,
-                    ipAddress);
+                seat.SeatStatus = "Available";
+                seat.LockedByUserId = null;
+                seat.LockedAt = null;
+                seat.UpdatedAt = DateTime.UtcNow;
 
-                return ApiResponse<ReleaseSeatsResponseDto>.SuccessResponse(response);
+                response.ReleasedSeatNumbers.Add(seatNumber);
             }
-            catch (Exception ex)
+
+            var seatsToUpdate = seats.Where(s => response.ReleasedSeatNumbers.Contains(s.SeatNumber)).ToList();
+            if (seatsToUpdate.Count > 0)
             {
-                throw;
+                await _seatRepository.UpdateManyAsync(seatsToUpdate);
+                await _seatRepository.SaveChangesAsync();
             }
+
+            response.Success = response.FailedSeatNumbers.Count == 0;
+            response.Message = response.Success
+                ? $"All {response.ReleasedSeatNumbers.Count} seats released successfully."
+                : $"Released {response.ReleasedSeatNumbers.Count} seats. Failed: {response.FailedSeatNumbers.Count}";
+
+            await _auditRepository.LogAuditAsync(
+                "RELEASE_SEATS",
+                "Seat",
+                string.Join(",", response.ReleasedSeatNumbers),
+                null,
+                new { scheduleId, seatNumbers = response.ReleasedSeatNumbers },
+                userId,
+                ipAddress);
+
+            return ApiResponse<ReleaseSeatsResponseDto>.SuccessResponse(response);
         }
 
         public async Task<int> CleanupExpiredLocksAsync()
@@ -319,76 +304,82 @@ namespace BusTicketingSystem.Services
             if (seatNumbers == null || seatNumbers.Count == 0)
                 throw new ValidationException("At least one seat must be confirmed.", "VAL_SEAT_CONFIRM");
 
-            try
+            var seats = await _seatRepository.GetSeatsByNumbersAsync(scheduleId, seatNumbers);
+            var seatsToConfirm = new List<Seat>();
+            var now = DateTime.UtcNow;
+
+            foreach (var seatNumber in seatNumbers)
             {
-                var seats = await _seatRepository.GetSeatsByNumbersAsync(scheduleId, seatNumbers);
+                var seat = seats.FirstOrDefault(s => s.SeatNumber == seatNumber);
 
-                foreach (var seatNumber in seatNumbers)
-                {
-                    var seat = seats.FirstOrDefault(s => s.SeatNumber == seatNumber);
+                if (seat == null)
+                    throw new SeatOperationException($"Seat {seatNumber} not found.", SeatOperationException.SeatErrorType.InvalidSeatNumber);
 
-                    if (seat == null)
-                        throw new SeatOperationException($"Seat {seatNumber} not found.", SeatOperationException.SeatErrorType.InvalidSeatNumber);
+                if (seat.SeatStatus != "Locked")
+                    throw new SeatOperationException($"Seat {seatNumber} is not locked.", SeatOperationException.SeatErrorType.SeatNotLocked);
 
-                    if (seat.SeatStatus != "Locked")
-                        throw new SeatOperationException($"Seat {seatNumber} is not locked.", SeatOperationException.SeatErrorType.SeatNotLocked);
+                if (seat.LockedByUserId != userId)
+                    throw new SeatOperationException($"Seat {seatNumber} is locked by another user.", SeatOperationException.SeatErrorType.SeatNotAvailable);
 
-                    if (seat.LockedByUserId != userId)
-                        throw new SeatOperationException($"Seat {seatNumber} is locked by another user.", SeatOperationException.SeatErrorType.SeatNotAvailable);
+                seat.SeatStatus = "Booked";
+                seat.BookingId = bookingId;
+                seat.LockedByUserId = null;
+                seat.LockedAt = null;
+                seat.UpdatedAt = now;
+                seatsToConfirm.Add(seat);
+            }
 
-                    seat.SeatStatus = "Booked";
-                    seat.BookingId = bookingId;
-                    seat.LockedByUserId = null;
-                    seat.LockedAt = null;
-                    seat.UpdatedAt = DateTime.UtcNow;
-                }
-
-                await _seatRepository.UpdateManyAsync(seats);
+            // BUG FIX: only update the confirmed seats, not the entire fetched list
+            if (seatsToConfirm.Count > 0)
+            {
+                await _seatRepository.UpdateManyAsync(seatsToConfirm);
                 await _seatRepository.SaveChangesAsync();
+            }
 
-                return ApiResponse<bool>.SuccessResponse(true);
-            }
-            catch (Exception)
-            {
-                throw;
-            }
+            return ApiResponse<bool>.SuccessResponse(true);
         }
 
         public async Task<ApiResponse<bool>> ReleaseBookingSeatsAsync(
             int scheduleId,
-            List<string> seatNumbers)
+            List<string> seatNumbers,
+            int bookingId)
         {
             if (seatNumbers == null || seatNumbers.Count == 0)
                 throw new ValidationException("At least one seat must be specified.", "VAL_SEAT_SELECTION");
 
-            try
+            var seats = await _seatRepository.GetSeatsByNumbersAsync(scheduleId, seatNumbers);
+            var seatsToRelease = new List<Seat>();
+            var now = DateTime.UtcNow;
+
+            foreach (var seatNumber in seatNumbers)
             {
-                var seats = await _seatRepository.GetSeatsByNumbersAsync(scheduleId, seatNumbers);
+                var seat = seats.FirstOrDefault(s => s.SeatNumber == seatNumber);
 
-                foreach (var seatNumber in seatNumbers)
-                {
-                    var seat = seats.FirstOrDefault(s => s.SeatNumber == seatNumber);
+                if (seat == null)
+                    throw new SeatOperationException($"Seat {seatNumber} not found.", SeatOperationException.SeatErrorType.InvalidSeatNumber);
 
-                    if (seat == null)
-                        throw new SeatOperationException($"Seat {seatNumber} not found.", SeatOperationException.SeatErrorType.InvalidSeatNumber);
+                // BUG FIX: verify the seat actually belongs to this booking before releasing
+                if (seat.BookingId != bookingId)
+                    throw new SeatOperationException(
+                        $"Seat {seatNumber} does not belong to booking {bookingId}.",
+                        SeatOperationException.SeatErrorType.SeatNotAvailable);
 
-                    if (seat.SeatStatus != "Booked")
-                        throw new SeatOperationException($"Seat {seatNumber} is not booked.", SeatOperationException.SeatErrorType.SeatNotAvailable);
+                if (seat.SeatStatus != "Booked")
+                    throw new SeatOperationException($"Seat {seatNumber} is not booked.", SeatOperationException.SeatErrorType.SeatNotAvailable);
 
-                    seat.SeatStatus = "Available";
-                    seat.BookingId = null;
-                    seat.UpdatedAt = DateTime.UtcNow;
-                }
+                seat.SeatStatus = "Available";
+                seat.BookingId = null;
+                seat.UpdatedAt = now;
+                seatsToRelease.Add(seat);
+            }
 
-                await _seatRepository.UpdateManyAsync(seats);
+            if (seatsToRelease.Count > 0)
+            {
+                await _seatRepository.UpdateManyAsync(seatsToRelease);
                 await _seatRepository.SaveChangesAsync();
+            }
 
-                return ApiResponse<bool>.SuccessResponse(true);
-            }
-            catch (Exception)
-            {
-                throw;
-            }
+            return ApiResponse<bool>.SuccessResponse(true);
         }
     }
 }

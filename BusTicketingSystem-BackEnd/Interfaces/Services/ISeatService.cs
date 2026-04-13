@@ -33,6 +33,7 @@ namespace BusTicketingSystem.Interfaces.Services
 
         Task<ApiResponse<bool>> ReleaseBookingSeatsAsync(
             int scheduleId,
-            List<string> seatNumbers);
+            List<string> seatNumbers,
+            int bookingId);
     }
 }

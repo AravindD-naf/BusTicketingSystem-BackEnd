@@ -192,6 +192,8 @@ namespace BusTicketingSystem.Services
                     foreach (var seat in lockedSeats)
                     {
                         seat.SeatStatus = "Booked";
+                        // BUG FIX: BookingId was never set here — confirmed seats had null BookingId
+                        seat.BookingId = booking.BookingId;
                         seat.LockedByUserId = null;
                         seat.LockedAt = null;
                         seat.UpdatedAt = now;

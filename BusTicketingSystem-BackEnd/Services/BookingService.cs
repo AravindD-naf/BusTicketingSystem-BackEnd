@@ -633,8 +633,11 @@ namespace BusTicketingSystem.Services
         private static string GeneratePNR()
         {
             const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-            var rng = new Random();
-            return new string(Enumerable.Range(0, 8).Select(_ => chars[rng.Next(chars.Length)]).ToArray());
+            // BUG FIX: use RandomNumberGenerator for thread-safe, cryptographically random PNRs
+            // new Random() in a static method can produce duplicate values under concurrent load
+            var bytes = new byte[8];
+            System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
+            return new string(bytes.Select(b => chars[b % chars.Length]).ToArray());
         }
     }
 }
