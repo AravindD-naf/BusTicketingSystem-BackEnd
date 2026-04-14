@@ -19,6 +19,7 @@ namespace BusTicketingSystem.Services
         private readonly ICancellationPolicyRepository _policyRepository;
         private readonly IAuditRepository _auditRepository;
         private readonly ISeatRepository _seatRepository;
+        private readonly ISeatService _seatService;
         private readonly IPromoCodeService _promoCodeService;
         private readonly IWalletService _walletService;
         private readonly IEmailService _emailService;
@@ -32,6 +33,7 @@ namespace BusTicketingSystem.Services
             ICancellationPolicyRepository policyRepository,
             IAuditRepository auditRepository,
             ISeatRepository seatRepository,
+            ISeatService seatService,
             IPromoCodeService promoCodeService,
             IWalletService walletService,
             IEmailService emailService,
@@ -44,6 +46,7 @@ namespace BusTicketingSystem.Services
             _policyRepository = policyRepository;
             _auditRepository = auditRepository;
             _seatRepository = seatRepository;
+            _seatService = seatService;
             _promoCodeService = promoCodeService;
             _walletService = walletService;
             _emailService = emailService;
@@ -109,6 +112,9 @@ namespace BusTicketingSystem.Services
                 throw new PaymentOperationException(
                     "Payment amount does not match booking total after discount",
                     PaymentOperationException.PaymentErrorType.InvalidAmount);
+
+            // Extend seat locks to match the payment window so they don't expire mid-payment
+            await _seatService.ExtendSeatsLockAsync(booking.ScheduleId, userId, extendByMinutes: 16);
 
             var payment = new Payment
             {
@@ -180,9 +186,26 @@ namespace BusTicketingSystem.Services
                 booking.BookingStatus = BookingStatus.Confirmed;
                 booking.LastStatusChangeAt = DateTime.UtcNow;
 
-                // ?? KEY CHANGE ?? Confirm seats: Locked ? Booked (only now, after payment)
                 var lockedSeats = await _seatRepository.GetLockedSeatsByUserAsync(
                     booking.ScheduleId, booking.UserId);
+
+                // Guard: if no locked seats found, the lock expired before payment completed.
+                // Fail the payment rather than confirming a booking with no seats.
+                if (lockedSeats.Count == 0)
+                {
+                    payment.Status = PaymentStatus.Failed;
+                    payment.FailureReason = "Seat lock expired before payment was completed. Please select seats again.";
+                    booking.BookingStatus = BookingStatus.PaymentFailed;
+                    booking.LastStatusChangeAt = DateTime.UtcNow;
+
+                    await _paymentRepository.UpdateAsync(payment);
+                    await _bookingRepository.UpdateAsync(booking);
+                    await _paymentRepository.SaveChangesAsync();
+
+                    throw new PaymentOperationException(
+                        "Your seat reservation expired before payment was completed. Please start a new booking.",
+                        PaymentOperationException.PaymentErrorType.ProcessingError);
+                }
 
                 var schedule = await _scheduleRepository.GetByIdAsync(booking.ScheduleId);
 

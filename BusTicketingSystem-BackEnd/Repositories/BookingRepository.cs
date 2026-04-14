@@ -88,6 +88,7 @@ namespace BusTicketingSystem.Repositories
             await _context.SaveChangesAsync();
         }
 
+        // Fetches all non-deleted bookings for a specific user, along with all related details needed for display.
         public async Task<List<Booking>> GetByUserIdWithRefundAsync(int userId)
         {
             return await _context.Bookings
@@ -104,6 +105,7 @@ namespace BusTicketingSystem.Repositories
                 .ToListAsync();
         }
 
+        // Returns the total number of bookings created by a user, regardless of deletion filters.
         public async Task<int> GetTotalCountByUserIdAsync(int userId)
         {
             return await _context.Bookings

@@ -103,5 +103,28 @@ namespace BusTicketingSystem.Repositories
         {
             await _context.SaveChangesAsync();
         }
+
+        public async Task<int> ExtendUserLocksAsync(int scheduleId, int userId, int extendByMinutes)
+        {
+            var now = DateTime.UtcNow;
+            var activeLocks = await _context.SeatLocks
+                .Include(sl => sl.Seat)
+                .Where(sl => sl.Seat.ScheduleId == scheduleId &&
+                             sl.UserId == userId &&
+                             !sl.IsReleased &&
+                             sl.ExpiresAt > now)
+                .ToListAsync();
+
+            foreach (var seatLock in activeLocks)
+                seatLock.ExpiresAt = now.AddMinutes(extendByMinutes);
+
+            if (activeLocks.Count > 0)
+            {
+                _context.SeatLocks.UpdateRange(activeLocks);
+                await _context.SaveChangesAsync();
+            }
+
+            return activeLocks.Count;
+        }
     }
 }

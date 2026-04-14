@@ -4,7 +4,6 @@ using BusTicketingSystem.Interfaces.Repositories;
 using BusTicketingSystem.Interfaces.Services;
 using BusTicketingSystem.Models;
 using BusTicketingSystem.Models.Enums;
-using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketingSystem.Services
 {
@@ -293,6 +292,14 @@ namespace BusTicketingSystem.Services
         public async Task<int> CleanupExpiredLocksAsync()
         {
             return await _seatLockRepository.CleanupExpiredLocksAsync();
+        }
+
+        public async Task<int> ExtendSeatsLockAsync(int scheduleId, int userId, int extendByMinutes)
+        {
+            // Extend both the Seat.LockedAt timestamp and the SeatLock.ExpiresAt
+            var seatsExtended = await _seatRepository.ExtendLocksForUserAsync(scheduleId, userId, extendByMinutes);
+            await _seatLockRepository.ExtendUserLocksAsync(scheduleId, userId, extendByMinutes);
+            return seatsExtended;
         }
 
         public async Task<ApiResponse<bool>> ConfirmBookingSeatsAsync(

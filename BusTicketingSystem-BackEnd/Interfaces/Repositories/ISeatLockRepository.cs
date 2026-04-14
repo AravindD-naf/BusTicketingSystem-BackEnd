@@ -9,5 +9,6 @@ namespace BusTicketingSystem.Interfaces.Repositories
         Task<bool> HasActiveLockAsync(int seatId, int userId);
         Task<int> CleanupExpiredLocksAsync();
         Task<List<SeatLock>> GetExpiredLocksAsync();
+        Task<int> ExtendUserLocksAsync(int scheduleId, int userId, int extendByMinutes);
     }
 }

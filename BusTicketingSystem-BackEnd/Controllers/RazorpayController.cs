@@ -21,17 +21,20 @@ namespace BusTicketingSystem.Controllers
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ApplicationDbContext _db;
         private readonly IPaymentService _paymentService;
+        private readonly ISeatService _seatService;
 
         public RazorpayController(
             IConfiguration config,
             IHttpClientFactory httpClientFactory,
             ApplicationDbContext db,
-            IPaymentService paymentService)
+            IPaymentService paymentService,
+            ISeatService seatService)
         {
             _config = config;
             _httpClientFactory = httpClientFactory;
             _db = db;
             _paymentService = paymentService;
+            _seatService = seatService;
         }
 
         /// POST /api/v1/razorpay/create-order
@@ -75,6 +78,11 @@ namespace BusTicketingSystem.Controllers
 
             using var doc = JsonDocument.Parse(body);
             var orderId = doc.RootElement.GetProperty("id").GetString();
+
+            // Extend seat locks to cover the full payment window
+            var booking = await _db.Bookings.FindAsync(req.BookingId);
+            if (booking != null)
+                await _seatService.ExtendSeatsLockAsync(booking.ScheduleId, GetUserId(), extendByMinutes: 16);
 
             return Ok(ApiResponse<object>.SuccessResponse(new
             {

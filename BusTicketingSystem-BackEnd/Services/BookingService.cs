@@ -402,7 +402,7 @@ namespace BusTicketingSystem.Services
                                (s.SeatStatus == "Booked" || s.SeatStatus == "Locked"))
                         .ToList();
 
-                    // FIX — capture count BEFORE modifying statuses
+                    // FIX — capture count BEFORE modifying statuses. Used to correctly increment AvailableSeats
                     var bookedCount = affectedSeats.Count(s => s.SeatStatus == "Booked");
 
                     if (!wasConfirmed || role == "Admin")

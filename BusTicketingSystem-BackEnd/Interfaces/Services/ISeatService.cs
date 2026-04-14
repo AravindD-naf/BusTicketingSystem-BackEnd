@@ -35,5 +35,12 @@ namespace BusTicketingSystem.Interfaces.Services
             int scheduleId,
             List<string> seatNumbers,
             int bookingId);
+
+        /// <summary>
+        /// Extends the lock on all seats held by the user for a given schedule.
+        /// Called at payment initiation so the lock outlives the payment window.
+        /// Returns the number of seats extended.
+        /// </summary>
+        Task<int> ExtendSeatsLockAsync(int scheduleId, int userId, int extendByMinutes);
     }
 }
