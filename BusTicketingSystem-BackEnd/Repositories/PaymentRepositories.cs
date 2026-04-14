@@ -124,7 +124,6 @@ namespace BusTicketingSystem.Repositories
 
         public new async Task SaveChangesAsync() => await _context.SaveChangesAsync();
     }
-}
 
     public class BusRatingRepository : Repository<BusRating>, IBusRatingRepository
     {
@@ -151,3 +150,5 @@ namespace BusTicketingSystem.Repositories
 
         public new async Task SaveChangesAsync() => await _context.SaveChangesAsync();
     }
+
+}

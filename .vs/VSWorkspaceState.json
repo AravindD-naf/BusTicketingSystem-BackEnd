@@ -1,8 +1,8 @@
 {
   "ExpandedNodes": [
     "",
-    "\\BusTicketingSystem-BackEnd-Test"
+    "\\BusTicketingSystem-BackEnd"
   ],
-  "SelectedNode": "\\BusTicketingSystem-BackEnd-Test\\BusTicketingSystem.Tests",
+  "SelectedNode": "\\BusTicketingSystem-BackEnd\\Program.cs",
   "PreviewInSolutionExplorer": false
 }
